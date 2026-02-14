@@ -11,6 +11,11 @@ class TokenType(Enum):
     SELECT = auto()
     FROM = auto()
     WHERE = auto()
+    ORDER =auto()
+    BY =auto()
+    LIMIT =auto()
+    GROUP =auto()
+    HAVING =auto()
 
     IDENT = auto()
     INT = auto()
@@ -18,6 +23,19 @@ class TokenType(Enum):
     NUMBER = auto()
     STRING = auto()
     
+    AND = auto()
+    OR = auto()
+    NOT = auto()
+
+    COUNT = auto()
+    SUM = auto()
+    AVG = auto()
+    MIN = auto()
+    MAX = auto()
+
+    ASC = auto()
+    DESC = auto()
+
     COMMA = auto()
     LPAREN = auto()
     RPAREN = auto()

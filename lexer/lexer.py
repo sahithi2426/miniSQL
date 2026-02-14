@@ -10,8 +10,23 @@ KEYWORDS = {
     "SELECT": TokenType.SELECT,
     "FROM": TokenType.FROM,
     "WHERE": TokenType.WHERE,
+    "ORDER": TokenType.ORDER,
+    "BY": TokenType.BY,
+    "LIMIT": TokenType.LIMIT,
+    "GROUP": TokenType.GROUP,
+    "HAVING": TokenType.HAVING,
     "INT": TokenType.INT,
     "TEXT": TokenType.TEXT,
+    "AND": TokenType.AND,
+    "OR": TokenType.OR,
+    "NOT": TokenType.NOT,
+    "COUNT": TokenType.COUNT,
+    "SUM": TokenType.SUM,
+    "AVG": TokenType.AVG,
+    "MIN": TokenType.MIN,
+    "MAX": TokenType.MAX,
+    "ASC": TokenType.ASC,
+    "DESC": TokenType.DESC,
 }
 
 TOKEN_SPEC = [
