@@ -1,5 +1,4 @@
-from lexer.lexer import Lexer   # adjust if your structure differs
-
+from lexer.lexer import Lexer 
 def test(input_sql):
     print("\nINPUT:")
     print(input_sql)
@@ -9,7 +8,6 @@ def test(input_sql):
     for t in tokens:
         print(t)
 
-# Test cases
 """ test("SELECT * FROM users;")
 test("SELECT name FROM users WHERE age >= 18;")
 test("INSERT INTO users VALUES ('Alice');")

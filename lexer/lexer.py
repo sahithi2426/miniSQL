@@ -33,7 +33,7 @@ TOKEN_SPEC = [
     ("NUMBER", r"\d+"),
     ("STRING", r"'[^']*'"),
     ("IDENT", r"[A-Za-z_][A-Za-z0-9_]*"),
-     ("COMMENT", r"--.*"), 
+    ("COMMENT", r"--.*"), 
     ("COMMA", r","),
     ("LPAREN", r"\("),
     ("RPAREN", r"\)"),
