@@ -1,5 +1,6 @@
 from lexer.lexer import Lexer
 from parser.parser import Parser
+from parser.ast import *
 
 def test(sql):
     print("\nINPUT:")
@@ -12,10 +13,35 @@ def test(sql):
     ast = parser.parse()
 
     print("\nAST OUTPUT:")
-    print(ast)
+    if ast is None:
+        print("(No statement)")
+    else:
+        ast.pretty_print()
 
 test("CREATE TABLE users (id INT, name TEXT);")
 test("INSERT INTO users VALUES (1, 'Alice');")
 test("SELECT name FROM users;")
 test("SELECT * FROM users;")
-test("SELECT name FROM users WHERE age > 25;")
+test("select name from users where age > 18;")
+test("SELECT department, COUNT(*) FROM employees GROUP BY department;")
+test("SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) > 5;")
+test("SELECT department, COUNT(*), SUM(salary), AVG(age) FROM employees GROUP BY department;")
+test("SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) >= 10;")
+test("SELECT department, COUNT(*) FROM employees WHERE age > 25 GROUP BY department HAVING COUNT(*) > 5;")
+test("SELECT name FROM employees WHERE department = 'HR';")
+test("SELECT name FROM employees WHERE age < 20 OR age > 60;")
+test("SELECT   name    FROM    employees   ;")
+test("SELECT department FROM employees HAVING COUNT(*) > 5;")
+test("SELECT name FROM employees WHERE age > 18 AND NOT salary > 50000;")
+test("SELECT name FROM employees WHERE age > 18 AND salary > 50000 OR department = 'IT';")
+test("SELECT name FROM employees")
+test("SELECT FROM employees;")
+test("SELECT department FROM employees GROUP BY;")
+test("SELECT COUNT(*) FROM employees;")
+test("SELECT name FROM employees LIMIT 3;")
+test("SELECT name FROM employees WHERE age > 25 AND salary > 50000 OR department = 'HR';")
+test("-- this is a comment")
+test("SELECT name,, age FROM employees;")
+test("SELECT name FROM employees WHERE age > 18 AND NOT salary > 50000;")
+test("SELECT name FROM employees WHERE age > 18 AND salary > 50000 OR department = 'IT';")
+

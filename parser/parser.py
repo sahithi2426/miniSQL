@@ -1,5 +1,5 @@
 from lexer.tokens import TokenType
-from parser.ast import CreateTable, Insert, Select, Where
+from parser.ast import *
 
 class Parser:
     def __init__(self, tokens):
@@ -16,6 +16,8 @@ class Parser:
             raise SyntaxError(f"Expected {token_type}, got {self.current()}")
 
     def parse(self):
+        if self.current().type == TokenType.EOF:
+            return None
         if self.current().type == TokenType.CREATE:
             return self.parse_create()
         if self.current().type == TokenType.INSERT:
@@ -69,21 +71,45 @@ class Parser:
     def parse_select(self):
         self.eat(TokenType.SELECT)
         columns = []
-        if self.current().type == TokenType.STAR:
-            columns.append("*")
-            self.eat(TokenType.STAR)
-        elif self.current().type == TokenType.IDENT:
-            while self.current().type != TokenType.FROM:
+
+    # Columns (support aggregates)
+        while True:
+            if self.current().type == TokenType.STAR:
+                columns.append("*")
+                self.eat(TokenType.STAR)
+
+            elif self.current().type in (
+                TokenType.COUNT,
+                TokenType.SUM,
+                TokenType.AVG,
+                TokenType.MIN,
+                TokenType.MAX,
+            ):
+                func = self.current().type.name
+                self.eat(self.current().type)
+                self.eat(TokenType.LPAREN)
+                if self.current().type==TokenType.STAR:
+                    col="*"
+                    self.eat(TokenType.STAR)
+                elif self.current().type==TokenType.IDENT:
+                    col=self.current().value
+                    self.eat(TokenType.IDENT)
+                else:
+                    raise SyntaxError("Expected column name or * inside aggregate")
+                self.eat(TokenType.RPAREN)
+                columns.append(f"{func}({col})")
+
+            elif self.current().type == TokenType.IDENT:
                 columns.append(self.current().value)
                 self.eat(TokenType.IDENT)
 
-                if self.current().type == TokenType.COMMA:
-                    self.eat(TokenType.COMMA)
-                elif self.current().type != TokenType.FROM:
-                    raise SyntaxError("Expected COMMA or FROM in SELECT")
+            else:
+                raise SyntaxError("Invalid column in SELECT")
 
-        else:
-            raise SyntaxError("Expected column name or * after SELECT")
+            if self.current().type == TokenType.COMMA:
+                self.eat(TokenType.COMMA)
+            else:
+                break
 
         self.eat(TokenType.FROM)
         table = self.current().value
@@ -91,14 +117,129 @@ class Parser:
 
         where = None
         if self.current().type == TokenType.WHERE:
-            self.eat(TokenType.WHERE)
-            col = self.current().value
+            where = self.parse_where()
+
+    # GROUP BY
+        group_by = None
+        if self.current().type == TokenType.GROUP:
+            self.eat(TokenType.GROUP)
+            self.eat(TokenType.BY)
+            group_by = self.current().value
             self.eat(TokenType.IDENT)
-            op = self.current().value
-            self.eat(self.current().type)
-            val = self.current().value
+
+        # HAVING
+        having = None
+        if self.current().type == TokenType.HAVING:
+            self.eat(TokenType.HAVING)
+            having = self.parse_having()
+
+    # ORDER BY
+        order_by = None
+        order_type = None
+        if self.current().type == TokenType.ORDER:
+            self.eat(TokenType.ORDER)
+            self.eat(TokenType.BY)
+            order_by = self.current().value
+            self.eat(TokenType.IDENT)
+
+            if self.current().type in (TokenType.ASC, TokenType.DESC):
+                order_type = self.current().type.name
+                self.eat(self.current().type)
+
+    # LIMIT
+        limit = None
+        if self.current().type == TokenType.LIMIT:
+            self.eat(TokenType.LIMIT)
+            limit = self.current().value
             self.eat(TokenType.NUMBER)
-            where = Where(col, op, val)
 
         self.eat(TokenType.SEMICOLON)
-        return Select(columns, table, where)
+        return Select(columns, table, where, group_by, having, order_by, order_type, limit)
+    
+    def parse_where(self):
+        self.eat(TokenType.WHERE)
+        return self.parse_or()
+    
+    def parse_or(self):
+        left = self.parse_and()
+
+        while self.current().type == TokenType.OR:
+            self.eat(TokenType.OR)
+            right = self.parse_and()
+            left = Where(left, "OR", right)
+
+        return left
+    
+    def parse_and(self):
+        left = self.parse_not()
+
+        while self.current().type == TokenType.AND:
+            self.eat(TokenType.AND)
+            right = self.parse_not()
+            left = Where(left, "AND", right)
+
+        return left
+
+    def parse_not(self):
+        if self.current().type == TokenType.NOT:
+            self.eat(TokenType.NOT)
+            condition = self.parse_comparison()
+            return Where("NOT", None, condition)
+
+        return self.parse_comparison()
+    
+    def parse_comparison(self):
+        col = self.current().value
+        self.eat(TokenType.IDENT)
+
+        op = self.current().value
+        self.eat(self.current().type)
+
+        if self.current().type == TokenType.NUMBER:
+            val = self.current().value
+            self.eat(TokenType.NUMBER)
+        elif self.current().type == TokenType.STRING:
+            val = self.current().value
+            self.eat(TokenType.STRING)
+        else:
+            raise SyntaxError("Expected NUMBER or STRING in WHERE")
+
+        return Where(f"{col} {op} {val}")
+
+    def parse_having(self):
+    # Support aggregate like COUNT(*)
+        if self.current().type in (
+            TokenType.COUNT,
+            TokenType.SUM,
+            TokenType.AVG,
+            TokenType.MIN,
+            TokenType.MAX,
+        ):
+            func = self.current().type.name
+            self.eat(self.current().type)
+            self.eat(TokenType.LPAREN)
+
+            if self.current().type == TokenType.STAR:
+                col = "*"
+                self.eat(TokenType.STAR)
+            else:
+                col = self.current().value
+                self.eat(TokenType.IDENT)
+
+            self.eat(TokenType.RPAREN)
+
+            left = f"{func}({col})"
+
+        else:
+            raise SyntaxError("Expected aggregate function in HAVING")
+
+        op = self.current().value
+        self.eat(self.current().type)
+
+        if self.current().type == TokenType.NUMBER:
+            val = self.current().value
+            self.eat(TokenType.NUMBER)
+        else:
+            raise SyntaxError("Expected number in HAVING condition")
+
+        return Where(left, op, val)

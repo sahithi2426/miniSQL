@@ -18,7 +18,7 @@ test("SELECT age>=18 FROM users;")
 test("SELECT age<=30 FROM users;")
 test("SELECT age<>25 FROM users;")
 test("SELECT age!=25 FROM users;") """
-test("SELECT name FROM users WHERE age > 18;")
+test("select name from users where age > 18;")
 test("SELECT * FROM users ORDER BY age DESC;")
 test("SELECT * FROM users LIMIT 10;")
 test("SELECT department, COUNT(*) FROM employees GROUP BY department;")

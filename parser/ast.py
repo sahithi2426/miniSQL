@@ -3,31 +3,83 @@ class CreateTable:
         self.name = name
         self.columns = columns
 
-    def __repr__(self):
-        return f"CreateTable({self.name}, {self.columns})"
+    def pretty_print(self):
+        print("CREATE TABLE")
+        print("├── Name:", self.name)
+        print("└── Columns")
+        for i, (col_name, col_type) in enumerate(self.columns):
+            connector = "└──" if i == len(self.columns) - 1 else "├──"
+            print(f"    {connector} {col_name} ({col_type.name})")
+
 
 class Insert:
     def __init__(self, table, values):
         self.table = table
         self.values = values
 
-    def __repr__(self):
-        return f"Insert({self.table}, {self.values})"
+    def pretty_print(self):
+        print("INSERT")
+        print("├── Table:", self.table)
+        print("└── Values")
+        for i, val in enumerate(self.values):
+            connector = "└──" if i == len(self.values) - 1 else "├──"
+            print(f"    {connector} {val}")
+
 
 class Select:
-    def __init__(self, columns, table, where):
+    def __init__(self, columns, table, where=None,
+                 group_by=None, having=None, order_by=None,
+                 order_type=None, limit=None):
         self.columns = columns
         self.table = table
         self.where = where
+        self.group_by = group_by
+        self.having = having
+        self.order_by = order_by
+        self.order_type = order_type
+        self.limit = limit
 
-    def __repr__(self):
-        return f"Select({self.columns}, {self.table}, {self.where})"
+    def pretty_print(self):
+        print("SELECT")
+        print("├── Columns:", ", ".join(self.columns))
+        print("├── Table:", self.table)
+
+        if self.where:
+            print("├── WHERE")
+            self.where.pretty_print("│   ")
+
+        if self.group_by:
+            print("├── GROUP BY:", self.group_by)
+            
+        if self.having:
+            print("├── HAVING")
+            self.having.pretty_print("│   ")
+
+        if self.order_by:
+            print("├── ORDER BY:", self.order_by,
+                  self.order_type if self.order_type else "")
+
+        if self.limit:
+            print("└── LIMIT:", self.limit)
+
 
 class Where:
-    def __init__(self, column, op, value):
-        self.column = column
+    def __init__(self, left, op=None, right=None):
+        self.left = left
         self.op = op
-        self.value = value
+        self.right = right
 
-    def __repr__(self):
-        return f"Where({self.column} {self.op} {self.value})"
+    def pretty_print(self, indent=""):
+        if isinstance(self.left, Where):
+            self.left.pretty_print(indent + "  ")
+        else:
+            print(f"{indent}├── {self.left}")
+
+        if self.op:
+            print(f"{indent}├── {self.op}")
+
+        if isinstance(self.right, Where):
+            self.right.pretty_print(indent + "  ")
+        elif self.right:
+            print(f"{indent}└── {self.right}")
+
