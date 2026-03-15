@@ -204,7 +204,7 @@ class Parser:
         else:
             raise SyntaxError("Expected NUMBER or STRING in WHERE")
 
-        return Where(f"{col} {op} {val}")
+        return Where(col, op, val)
 
     def parse_having(self):
     # Support aggregate like COUNT(*)

@@ -23,7 +23,22 @@ class SemanticAnalyzer:
         if len(node.values) != len(table.columns):
             raise Exception("Column count does not match value count")
 
+    # def _analyze_select(self, node):
+    #     table = self.catalog.get_table(node.table)
+
+    #     for col in node.columns:
+    #         if col != "*" and col not in table.columns:
+    #             raise Exception(f"Column '{col}' does not exist in '{table.name}'")
+
+    #     if node.where:
+    #         if node.where.column not in table.columns:
+    #             raise Exception(
+    #                 f"Column '{node.where.column}' does not exist in '{table.name}'"
+    #             )
+    # Replace the _analyze_select function in semantic/analyzer.py with this version
+
     def _analyze_select(self, node):
+
         table = self.catalog.get_table(node.table)
 
         for col in node.columns:
@@ -31,7 +46,15 @@ class SemanticAnalyzer:
                 raise Exception(f"Column '{col}' does not exist in '{table.name}'")
 
         if node.where:
-            if node.where.column not in table.columns:
-                raise Exception(
-                    f"Column '{node.where.column}' does not exist in '{table.name}'"
-                )
+            self._check_where(node.where, table)
+
+    def _check_where(self, where_node, table):
+        if where_node.op in ("AND", "OR"):
+            self._check_where(where_node.left, table)
+            self._check_where(where_node.right, table)
+        elif where_node.op == "NOT":
+            self._check_where(where_node.right, table)
+        else:
+            column = where_node.left
+            if column not in table.columns:
+                raise Exception(f"Column '{column}' does not exist in '{table.name}'")

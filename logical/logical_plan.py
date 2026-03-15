@@ -8,11 +8,15 @@ class LogicalCreateTable(LogicalPlan):
         self.columns = columns  # list of (name, type)
 
     def pretty_print(self, indent=""):
-        print(f"{indent}LogicalCreateTable")
-        print(f"{indent}├── Table: {self.table}")
-        print(f"{indent}└── Columns:")
-        for name, dtype in self.columns:
-            print(f"{indent}    ├── {name} {dtype}")
+        print(f"{indent}LogicalFilter")
+
+        if self.predicate.op:
+            print(f"{indent}├── Predicate: {self.predicate.left} {self.predicate.op} {self.predicate.right}")
+        else:
+            print(f"{indent}├── Predicate: {self.predicate.left}")
+
+        print(f"{indent}└── Child:")
+        self.child.pretty_print(indent + "    ")
 
 class LogicalScan(LogicalPlan):
     def __init__(self, table):
@@ -23,6 +27,17 @@ class LogicalScan(LogicalPlan):
         print(f"{indent}└── Table: {self.table}")
 
 
+# class LogicalFilter(LogicalPlan):
+#     def __init__(self, predicate, child):
+#         self.predicate = predicate
+#         self.child = child
+
+#     def pretty_print(self, indent=""):
+#         print(f"{indent}LogicalFilter")
+#         print(f"{indent}├── Predicate: {self.predicate.column} {self.predicate.op} {self.predicate.value}")
+#         print(f"{indent}└── Child:")
+#         self.child.pretty_print(indent + "    ")
+
 class LogicalFilter(LogicalPlan):
     def __init__(self, predicate, child):
         self.predicate = predicate
@@ -30,7 +45,8 @@ class LogicalFilter(LogicalPlan):
 
     def pretty_print(self, indent=""):
         print(f"{indent}LogicalFilter")
-        print(f"{indent}├── Predicate: {self.predicate.column} {self.predicate.op} {self.predicate.value}")
+        print(f"{indent}├── Predicate:")
+        self.predicate.pretty_print(indent + "│   ")
         print(f"{indent}└── Child:")
         self.child.pretty_print(indent + "    ")
 

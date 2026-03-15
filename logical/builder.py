@@ -21,8 +21,7 @@ class LogicalPlanBuilder:
 
         if isinstance(ast, CreateTable):
             return LogicalCreateTable(ast.name, ast.columns)
-
-        # Instead of returning None silently:
+        
         raise NotImplementedError(
             f"Logical plan not implemented for {type(ast)}"
         )
