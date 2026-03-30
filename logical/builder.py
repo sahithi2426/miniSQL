@@ -20,7 +20,7 @@ class LogicalPlanBuilder:
             return LogicalInsert(ast.table, ast.values)
 
         if isinstance(ast, CreateTable):
-            return LogicalCreateTable(ast.name, ast.columns)
+            return LogicalCreateTable(ast.name, ast.columns,getattr(ast, "foreign_keys", []),getattr(ast, "primary_key", None),getattr(ast, "unique_keys", []))
         
         raise NotImplementedError(
             f"Logical plan not implemented for {type(ast)}"

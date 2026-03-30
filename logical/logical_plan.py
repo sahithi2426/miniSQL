@@ -3,20 +3,34 @@ class LogicalPlan:
         pass
 
 class LogicalCreateTable(LogicalPlan):
-    def __init__(self, table, columns):
+    def __init__(self, table, columns, foreign_keys=None, primary_key=None, unique_keys=None):
         self.table = table
-        self.columns = columns  # list of (name, type)
+        self.columns = columns
+        self.foreign_keys = foreign_keys or []
+        self.primary_key = primary_key
+        self.unique_keys = unique_keys or []
 
     def pretty_print(self, indent=""):
-        print(f"{indent}LogicalFilter")
+        print(f"{indent}LogicalCreateTable")
+        print(f"{indent}├── Table: {self.table}")
+        print(f"{indent}├── Columns: {self.columns}")
 
-        if self.predicate.op:
+        if self.primary_key:
+            print(f"{indent}├── PRIMARY KEY: {self.primary_key}")
+
+        if self.unique_keys:
+            print(f"{indent}├── UNIQUE: {self.unique_keys}")
+
+        if self.foreign_keys:
+            print(f"{indent}└── FOREIGN KEYS: {self.foreign_keys}")
+
+        """if self.predicate.op:
             print(f"{indent}├── Predicate: {self.predicate.left} {self.predicate.op} {self.predicate.right}")
         else:
             print(f"{indent}├── Predicate: {self.predicate.left}")
 
         print(f"{indent}└── Child:")
-        self.child.pretty_print(indent + "    ")
+        self.child.pretty_print(indent + "    ")"""
 
 class LogicalScan(LogicalPlan):
     def __init__(self, table):

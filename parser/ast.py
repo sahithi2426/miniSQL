@@ -1,7 +1,10 @@
 class CreateTable:
-    def __init__(self, name, columns):
+    def __init__(self, name, columns,foreign_keys=None,primary_key=None,unique_keys=None):
         self.name = name
         self.columns = columns
+        self.foreign_keys=foreign_keys or []
+        self.primary_key = primary_key
+        self.unique_keys = unique_keys or []
 
     def pretty_print(self):
         print("CREATE TABLE")
@@ -62,6 +65,10 @@ class Select:
         if self.limit:
             print("└── LIMIT:", self.limit)
 
+        #if self.foreign_keys:
+         #   print("└── Foreign Keys")
+          #  for fk_col, ref_table, ref_col in self.foreign_keys:
+           #     print(f"    └── {fk_col} → {ref_table}({ref_col})")
 
 class Where:
     def __init__(self, left, op=None, right=None):

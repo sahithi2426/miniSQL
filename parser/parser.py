@@ -33,18 +33,70 @@ class Parser:
         self.eat(TokenType.IDENT)
 
         self.eat(TokenType.LPAREN)
+
         columns = []
+        foreign_keys = []
+        primary_key=None
+        unique_keys=[]
+
         while self.current().type != TokenType.RPAREN:
-            col_name = self.current().value
-            self.eat(TokenType.IDENT)
-            col_type = self.current().type
-            self.eat(col_type)
-            columns.append((col_name, col_type))
+
+        # FOREIGN KEY parsing
+            if self.current().type == TokenType.FOREIGN:
+                self.eat(TokenType.FOREIGN)
+                self.eat(TokenType.KEY)
+
+                self.eat(TokenType.LPAREN)
+                fk_col = self.current().value
+                self.eat(TokenType.IDENT)
+                self.eat(TokenType.RPAREN)
+
+                self.eat(TokenType.REFERENCES)
+
+                ref_table = self.current().value
+                self.eat(TokenType.IDENT)
+
+                self.eat(TokenType.LPAREN)
+                ref_col = self.current().value
+                self.eat(TokenType.IDENT)
+                self.eat(TokenType.RPAREN)
+
+                foreign_keys.append((fk_col, ref_table, ref_col))
+            elif self.current().type == TokenType.PRIMARY:
+                self.eat(TokenType.PRIMARY)
+                self.eat(TokenType.KEY)
+
+                self.eat(TokenType.LPAREN)
+                pk_col = self.current().value
+                self.eat(TokenType.IDENT)
+                self.eat(TokenType.RPAREN)
+
+                primary_key = pk_col
+            
+            elif self.current().type == TokenType.UNIQUE:
+                self.eat(TokenType.UNIQUE)
+
+                self.eat(TokenType.LPAREN)
+                uk_col = self.current().value
+                self.eat(TokenType.IDENT)
+                self.eat(TokenType.RPAREN)
+
+                unique_keys.append(uk_col)
+
+            else:
+                col_name = self.current().value
+                self.eat(TokenType.IDENT)
+                col_type = self.current().type
+                self.eat(col_type)
+                columns.append((col_name, col_type))
+
             if self.current().type == TokenType.COMMA:
                 self.eat(TokenType.COMMA)
+
         self.eat(TokenType.RPAREN)
         self.eat(TokenType.SEMICOLON)
-        return CreateTable(name, columns)
+
+        return CreateTable(name, columns, foreign_keys,primary_key,unique_keys)
     
     def parse_insert(self):
         self.eat(TokenType.INSERT)

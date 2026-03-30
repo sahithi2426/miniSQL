@@ -50,6 +50,12 @@ class TokenType(Enum):
     STAR = auto()       
     MINUS = auto()
 
+    FOREIGN = auto()
+    KEY = auto()
+    REFERENCES = auto()
+    PRIMARY = auto()
+    UNIQUE = auto()
+    
     EOF = auto()
 
 

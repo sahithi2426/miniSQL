@@ -27,6 +27,11 @@ KEYWORDS = {
     "MAX": TokenType.MAX,
     "ASC": TokenType.ASC,
     "DESC": TokenType.DESC,
+    "FOREIGN":TokenType.FOREIGN,
+    "KEY": TokenType.KEY,
+    "REFERENCES": TokenType.REFERENCES,
+    "PRIMARY": TokenType.PRIMARY,
+    "UNIQUE": TokenType.UNIQUE,
 }
 
 TOKEN_SPEC = [
