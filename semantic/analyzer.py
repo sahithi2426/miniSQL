@@ -80,25 +80,33 @@ class SemanticAnalyzer:
 
     def _analyze_select(self, node):
 
-        table = self.catalog.get_table(node.table)
+        tables = [self.catalog.get_table(node.table)]
+        if hasattr(node, 'joins') and node.joins:
+            for j in node.joins:
+                tables.append(self.catalog.get_table(j.table))
+                
+        all_cols = set()
+        for t in tables:
+            all_cols.update(t.columns.keys())
 
         if node.columns != ["*"]:
             for col in node.columns:
-                if col not in table.columns:
-                    raise Exception(f"Column '{col}' does not exist in '{table.name}'")
+                c = col.split('(')[1].strip(')') if '(' in col else col
+                if c != "*" and c not in all_cols:
+                    raise Exception(f"Column '{c}' does not exist in any selected tables")
 
         if node.where:
-            self._check_where(node.where, table)
+            self._check_where(node.where, all_cols)
 
-    def _check_where(self, where_node, table):
+    def _check_where(self, where_node, all_cols):
         if where_node.op in ("AND", "OR"):
-            self._check_where(where_node.left, table)
-            self._check_where(where_node.right, table)
+            self._check_where(where_node.left, all_cols)
+            self._check_where(where_node.right, all_cols)
 
         elif where_node.left == "NOT":
-            self._check_where(where_node.right, table)
+            self._check_where(where_node.right, all_cols)
 
         else:
             column = where_node.left
-            if column not in table.columns:
-                raise Exception(f"Column '{column}' does not exist in '{table.name}'")
+            if column not in all_cols:
+                raise Exception(f"Column '{column}' does not exist in selected tables")

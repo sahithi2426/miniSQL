@@ -56,6 +56,14 @@ class TokenType(Enum):
     PRIMARY = auto()
     UNIQUE = auto()
     
+    JOIN = auto()
+    INNER = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    FULL = auto()
+    OUTER = auto()
+    ON = auto()
+    
     EOF = auto()
 
 

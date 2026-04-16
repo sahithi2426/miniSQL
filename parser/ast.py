@@ -32,9 +32,10 @@ class Insert:
 class Select:
     def __init__(self, columns, table, where=None,
                  group_by=None, having=None, order_by=None,
-                 order_type=None, limit=None):
+                 order_type=None, limit=None, joins=None):
         self.columns = columns
         self.table = table
+        self.joins = joins or []
         self.where = where
         self.group_by = group_by
         self.having = having
@@ -64,11 +65,21 @@ class Select:
 
         if self.limit:
             print("└── LIMIT:", self.limit)
+            
+        if self.joins:
+            print("└── JOINS")
+            for join in self.joins:
+                join.pretty_print("    ")
 
-        #if self.foreign_keys:
-         #   print("└── Foreign Keys")
-          #  for fk_col, ref_table, ref_col in self.foreign_keys:
-           #     print(f"    └── {fk_col} → {ref_table}({ref_col})")
+class Join:
+    def __init__(self, join_type, table, condition):
+        self.join_type = join_type
+        self.table = table
+        self.condition = condition
+
+    def pretty_print(self, indent=""):
+        print(f"{indent}├── {self.join_type} JOIN {self.table} ON")
+        self.condition.pretty_print(indent + "│   ")
 
 class Where:
     def __init__(self, left, op=None, right=None):

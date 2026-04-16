@@ -167,6 +167,23 @@ class Parser:
         table = self.current().value
         self.eat(TokenType.IDENT)
 
+        joins = []
+        while self.current().type in (TokenType.INNER, TokenType.LEFT, TokenType.RIGHT, TokenType.FULL, TokenType.JOIN):
+            join_type = "INNER"
+            if self.current().type in (TokenType.INNER, TokenType.LEFT, TokenType.RIGHT, TokenType.FULL):
+                join_type = self.current().type.name
+                self.eat(self.current().type)
+                if self.current().type == TokenType.OUTER:
+                    self.eat(TokenType.OUTER)
+            
+            self.eat(TokenType.JOIN)
+            join_table = self.current().value
+            self.eat(TokenType.IDENT)
+            
+            self.eat(TokenType.ON)
+            condition = self.parse_or()
+            joins.append(Join(join_type, join_table, condition))
+
         where = None
         if self.current().type == TokenType.WHERE:
             where = self.parse_where()
@@ -206,7 +223,7 @@ class Parser:
             self.eat(TokenType.NUMBER)
 
         self.eat(TokenType.SEMICOLON)
-        return Select(columns, table, where, group_by, having, order_by, order_type, limit)
+        return Select(columns, table, where, group_by, having, order_by, order_type, limit, joins)
     
     def parse_where(self):
         self.eat(TokenType.WHERE)
@@ -253,8 +270,11 @@ class Parser:
         elif self.current().type == TokenType.STRING:
             val = self.current().value
             self.eat(TokenType.STRING)
+        elif self.current().type == TokenType.IDENT:
+            val = self.current().value
+            self.eat(TokenType.IDENT)
         else:
-            raise SyntaxError("Expected NUMBER or STRING in WHERE")
+            raise SyntaxError("Expected NUMBER, STRING, or IDENT in WHERE/ON")
 
         return Where(col, op, val)
 

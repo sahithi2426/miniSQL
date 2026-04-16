@@ -4,7 +4,8 @@ from logical.logical_plan import (
     LogicalFilter,
     LogicalProject,
     LogicalInsert,
-    LogicalCreateTable
+    LogicalCreateTable,
+    LogicalJoin
 )
 
 class LogicalPlanBuilder:
@@ -28,6 +29,11 @@ class LogicalPlanBuilder:
 
     def _build_select(self, node):
         plan = LogicalScan(node.table)
+
+        if hasattr(node, 'joins') and node.joins:
+            for j in node.joins:
+                right_plan = LogicalScan(j.table)
+                plan = LogicalJoin(j.join_type, plan, right_plan, j.condition)
 
         if node.where:
             plan = LogicalFilter(node.where, plan)

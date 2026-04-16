@@ -32,6 +32,13 @@ KEYWORDS = {
     "REFERENCES": TokenType.REFERENCES,
     "PRIMARY": TokenType.PRIMARY,
     "UNIQUE": TokenType.UNIQUE,
+    "JOIN": TokenType.JOIN,
+    "INNER": TokenType.INNER,
+    "LEFT": TokenType.LEFT,
+    "RIGHT": TokenType.RIGHT,
+    "FULL": TokenType.FULL,
+    "OUTER": TokenType.OUTER,
+    "ON": TokenType.ON,
 }
 
 TOKEN_SPEC = [

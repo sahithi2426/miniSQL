@@ -6,20 +6,29 @@ from codegen.c_generator import CCodeGenerator
 from codegen.emitter import CodeEmitter
 
 class Table:
-    def __init__(self, name, columns):
+    def __init__(self, name, columns, foreign_keys=None,primary_key=None, unique_keys=None):
         self.name = name
         self.columns = {c: t for c, t in columns}
+        self.foreign_keys = foreign_keys or []
+        self.primary_key = primary_key
+        self.unique_keys = unique_keys or []
+        self.rows = []   
+
 
 class Catalog:
     def __init__(self):
         self.tables = {}
 
-    def create_table(self, name, columns):
-        self.tables[name] = Table(name, columns)
+    def create_table(self, name, columns, foreign_keys=None, primary_key=None, unique_keys=None):
+        if name in self.tables:
+            raise Exception(f"Table '{name}' already exists")
+
+        self.tables[name] = Table(name, columns, foreign_keys, primary_key, unique_keys)
 
     def get_table(self, name):
         if name not in self.tables:
-            raise Exception(f"Table '{name}' does not exist.")
+            raise Exception(f"Table '{name}' does not exist")
+
         return self.tables[name]
 
 catalog = Catalog()

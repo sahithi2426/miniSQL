@@ -37,8 +37,24 @@ class LogicalScan(LogicalPlan):
         self.table = table
 
     def pretty_print(self, indent=""):
-        print(f"{indent}LogicalScan")
         print(f"{indent}└── Table: {self.table}")
+
+class LogicalJoin(LogicalPlan):
+    def __init__(self, join_type, left_child, right_child, condition):
+        self.join_type = join_type
+        self.left_child = left_child
+        self.right_child = right_child
+        self.condition = condition
+
+    def pretty_print(self, indent=""):
+        print(f"{indent}LogicalJoin ({self.join_type})")
+        print(f"{indent}├── Condition:")
+        if self.condition:
+            self.condition.pretty_print(indent + "│   ")
+        print(f"{indent}├── Left Child:")
+        self.left_child.pretty_print(indent + "│   ")
+        print(f"{indent}└── Right Child:")
+        self.right_child.pretty_print(indent + "    ")
 
 
 # class LogicalFilter(LogicalPlan):
