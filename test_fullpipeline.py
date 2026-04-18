@@ -6,6 +6,8 @@ from logical.builder import LogicalPlanBuilder
 from logical.optimizer import LogicalOptimizer
 from execution.builder_exec import PhysicalPlanBuilder
 from storage.catalog import Catalog
+from utils.pretty_print import pretty_output
+
 
 if os.path.exists("minisql_data.db"):
     os.remove("minisql_data.db")
@@ -56,17 +58,15 @@ def test(sql: str):
         print("\n--- OUTPUT ---")
         physical_plan.init()
 
-        count = 0
+        rows = []
+
         while True:
             tup = physical_plan.next()
             if tup is None:
                 break
-            print(tup)
-            count += 1
+            rows.append(tup)
 
-        if count == 0:
-            print("(no rows)")
-
+        pretty_output(rows)
     except Exception as e:
         print("\nERROR:", e)
 
