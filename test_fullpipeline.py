@@ -7,7 +7,7 @@ from logical.optimizer import LogicalOptimizer
 from execution.builder_exec import PhysicalPlanBuilder
 from storage.catalog import Catalog
 from utils.pretty_print import pretty_output
-
+from utils.relational_algebra import to_relational_algebra,dml_ddl_to_ra
 
 if os.path.exists("minisql_data.db"):
     os.remove("minisql_data.db")
@@ -28,27 +28,33 @@ def test(sql: str):
     try:
         # LEXER + PARSER
         lexer = Lexer(sql)
-        print("Done this 1")
+        #print("Done this 1")
         tokens = lexer.tokenize()
-        print("Done this 2")
+        #print("Done this 2")
         parser = Parser(tokens)
-        print("Done this 3")
+        #print("Done this 3")
         ast = parser.parse()
-        print("Done this 4")
+        #print("Done this 4")
 
         # SEMANTIC
         analyzer.analyze(ast)
-        print("Done this 5")
+        #print("Done this 5")
 
         # LOGICAL PLAN
         logical_plan = logical_builder.build(ast)
-        print("Done this 6")
+        print("\n--- RELATIONAL ALGEBRA ---")
+        stmt = dml_ddl_to_ra(logical_plan)
+        if stmt:
+            print(stmt)
+        else:
+            print(to_relational_algebra(logical_plan,"",True))
+        #print("Done this 6")
         # OPTIMIZATION
         logical_plan = optimizer.optimize(logical_plan)
-        print("Done this 7")
+        #print("Done this 7")
         # PHYSICAL PLAN
         physical_plan = physical_builder.build(logical_plan)
-        print("Done this 8")
+        #print("Done this 8")
         # HANDLE DDL (CREATE, DROP, etc.)
         if not physical_plan:
             print("\nSTATUS: Command executed successfully")
@@ -83,7 +89,7 @@ test("INSERT INTO Customers VALUES (101, 'Indu');")
 test("INSERT INTO Customers VALUES (102, 'Dhanya');")
 test("INSERT INTO Customers VALUES (103, 'Jyothi');")
 
-"""test("SELECT * FROM Orders WHERE id = 1;")
+test("SELECT * FROM Orders WHERE id = 1;")
 test("SELECT * FROM Orders WHERE id = 1 AND customer_id = 101;")
 test("SELECT * FROM Orders WHERE id = 1 OR id = 3;")
 test("SELECT * FROM Orders WHERE NOT id = 1;")
@@ -104,8 +110,8 @@ test("SELECT * FROM Orders WHERE id = 999;")
 # group by single row
 test("SELECT customer_id, COUNT(*) FROM Orders WHERE id = 3 GROUP BY customer_id;")
 # having no result
-test("SELECT customer_id, COUNT(*) FROM Orders GROUP BY customer_id HAVING COUNT(*) > 10;")
-"""
+
+test("SELECT customer_id, COUNT(*) FROM Orders GROUP BY customer_id HAVING COUNT(*) > 1;")
 
 # DELETE tests
 test("DELETE FROM Orders WHERE id = 1;")
@@ -163,3 +169,4 @@ test("SELECT * FROM Orders;")
 test("SELECT wrong_col FROM Orders;")
 test("SELECT * FROM Unknown;")
 test("SELECT * FROM Orders WHERE wrong = 1;")
+
