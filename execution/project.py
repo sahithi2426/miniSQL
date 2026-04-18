@@ -12,12 +12,37 @@ class ProjectExec(Executor):
         tup = self.child.next()
         if tup is None:
             return None
-        
-        if self.columns == ['*']:
+
+        if self.columns == ["*"]:
             return tup
-            
+
         proj = {}
+
         for col in self.columns:
-            if col in tup:
+            if not isinstance(col, str):
+                continue
+
+            # HANDLE alias.column
+            if "." in col:
+                alias, field = col.split(".", 1)
+
+                if alias == "o":
+                    key = f"left.{field}"
+                    if key in tup:
+                        proj[field] = tup[key]
+
+                elif alias == "c":
+                    key = f"right.{field}"
+                    if key in tup:
+                        proj[field] = tup[key]
+
+            # fallback (no alias)
+            elif col in tup:
                 proj[col] = tup[col]
+            else:
+                short = col.split('.')[-1]
+                for k in tup:
+                    if k.endswith("." + short):
+                        proj[short] = tup[k]
+
         return proj

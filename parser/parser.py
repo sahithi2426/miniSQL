@@ -24,11 +24,33 @@ class Parser:
             return self.parse_insert()
         if self.current().type == TokenType.SELECT:
             return self.parse_select()
+        if self.current().type == TokenType.DROP:
+            return self.parse_drop()
+        if self.current().type == TokenType.DELETE:
+            return self.parse_delete()
+        if self.current().type == TokenType.UPDATE:
+            return self.parse_update()
+        if self.current().type == TokenType.ALTER:
+            return self.parse_alter()
+        if self.current().type == TokenType.TRUNCATE:
+            return self.parse_truncate()
+        if self.current().type == TokenType.SHOW:
+            return self.parse_show()
+        if self.current().type == TokenType.DESC:
+            return self.parse_desc()
         raise SyntaxError("Unknown statement")
 
     def parse_create(self):
         self.eat(TokenType.CREATE)
         self.eat(TokenType.TABLE)
+        if_not_exists = False
+
+        if self.current().type == TokenType.IF:
+            self.eat(TokenType.IF)
+            self.eat(TokenType.NOT)
+            self.eat(TokenType.EXISTS)
+            if_not_exists = True
+
         name = self.current().value
         self.eat(TokenType.IDENT)
 
@@ -96,7 +118,7 @@ class Parser:
         self.eat(TokenType.RPAREN)
         self.eat(TokenType.SEMICOLON)
 
-        return CreateTable(name, columns, foreign_keys,primary_key,unique_keys)
+        return CreateTable(name, columns, foreign_keys,primary_key,unique_keys,if_not_exists)
     
     def parse_insert(self):
         self.eat(TokenType.INSERT)
@@ -152,8 +174,18 @@ class Parser:
                 columns.append(f"{func}({col})")
 
             elif self.current().type == TokenType.IDENT:
-                columns.append(self.current().value)
+                """columns.append(self.current().value)
                 self.eat(TokenType.IDENT)
+                    # check for table.column
+                if self.current().type == TokenType.DOT:
+                    self.eat(TokenType.DOT)
+                    col = self.current().value
+                    self.eat(TokenType.IDENT)
+                    columns.append(f"{table}.{col}")
+                else:
+                    columns.append(table)"""
+                col = self.parse_identifier()
+                columns.append(col)
 
             else:
                 raise SyntaxError("Invalid column in SELECT")
@@ -166,6 +198,10 @@ class Parser:
         self.eat(TokenType.FROM)
         table = self.current().value
         self.eat(TokenType.IDENT)
+        alias = None
+        if self.current().type == TokenType.IDENT:
+            alias = self.current().value
+            self.eat(TokenType.IDENT)
 
         joins = []
         while self.current().type in (TokenType.INNER, TokenType.LEFT, TokenType.RIGHT, TokenType.FULL, TokenType.JOIN):
@@ -179,10 +215,14 @@ class Parser:
             self.eat(TokenType.JOIN)
             join_table = self.current().value
             self.eat(TokenType.IDENT)
+            join_alias = None
+            if self.current().type == TokenType.IDENT:
+                join_alias = self.current().value
+                self.eat(TokenType.IDENT)
             
             self.eat(TokenType.ON)
             condition = self.parse_or()
-            joins.append(Join(join_type, join_table, condition))
+            joins.append(Join(join_type, join_table, condition, join_alias))
 
         where = None
         if self.current().type == TokenType.WHERE:
@@ -193,7 +233,7 @@ class Parser:
         if self.current().type == TokenType.GROUP:
             self.eat(TokenType.GROUP)
             self.eat(TokenType.BY)
-            group_by = self.current().value
+            group_by = [self.current().value]
             self.eat(TokenType.IDENT)
 
         # HAVING
@@ -223,7 +263,7 @@ class Parser:
             self.eat(TokenType.NUMBER)
 
         self.eat(TokenType.SEMICOLON)
-        return Select(columns, table, where, group_by, having, order_by, order_type, limit, joins)
+        return Select(columns, table, alias, where, group_by, having, order_by, order_type, limit, joins)
     
     def parse_where(self):
         self.eat(TokenType.WHERE)
@@ -252,14 +292,37 @@ class Parser:
     def parse_not(self):
         if self.current().type == TokenType.NOT:
             self.eat(TokenType.NOT)
-            condition = self.parse_comparison()
-            return Where("NOT", None, condition)
+            condition = self.parse_not() 
+            return Where(condition, "NOT", None)
 
+        return self._parse_primary()
+    
+
+    def parse_identifier(self):
+        name = self.current().value
+        self.eat(TokenType.IDENT)
+
+        if self.current().type == TokenType.DOT:
+            self.eat(TokenType.DOT)
+            col = self.current().value
+            self.eat(TokenType.IDENT)
+            return f"{name}.{col}"
+
+        return name
+
+    def _parse_primary(self):
+        # Handle Parentheses: (id = 1 OR id = 3)
+        if self.current().type == TokenType.LPAREN:
+            self.eat(TokenType.LPAREN)
+            node = self.parse_or()
+            self.eat(TokenType.RPAREN)
+            return node
+        
+        # Otherwise, it's a standard comparison (id = 1)
         return self.parse_comparison()
     
-    def parse_comparison(self):
-        col = self.current().value
-        self.eat(TokenType.IDENT)
+    """def parse_comparison(self):
+        col = self.parse_identifier()
 
         op = self.current().value
         self.eat(self.current().type)
@@ -271,12 +334,32 @@ class Parser:
             val = self.current().value
             self.eat(TokenType.STRING)
         elif self.current().type == TokenType.IDENT:
-            val = self.current().value
-            self.eat(TokenType.IDENT)
+            val = self.parse_identifier()
         else:
-            raise SyntaxError("Expected NUMBER, STRING, or IDENT in WHERE/ON")
+            raise SyntaxError("Invalid Comparision Value")
+        print("LEFT:", col, "OP:", op, "RIGHT:", val)
+        return Where(col, op, val)"""
+    def parse_comparison(self):
+        # 1. Parse Left Side
+        left = self.parse_identifier()
 
-        return Where(col, op, val)
+        # 2. Parse Operator
+        op = self.current().value
+        # Ensure we only eat if it's actually a comparison operator
+        if op in ('=', '>', '<', '!=', '<=', '>='):
+            self.eat(self.current().type)
+        else:
+            return left # Just a literal/identifier
+
+        # 3. Parse Right Side
+        if self.current().type == TokenType.IDENT:
+            right = self.parse_identifier()
+        else:
+            right = self.current().value
+            self.eat(self.current().type)
+
+        print(f"DEBUG PARSER -> LEFT: {left} OP: {op} RIGHT: {right}")
+        return Where(left, op, right)
 
     def parse_having(self):
     # Support aggregate like COUNT(*)
@@ -315,3 +398,131 @@ class Parser:
             raise SyntaxError("Expected number in HAVING condition")
 
         return Where(left, op, val)
+    
+    def parse_drop(self):
+        self.eat(TokenType.DROP)
+        self.eat(TokenType.TABLE)
+        if_exists = False
+        if self.current().type == TokenType.IF:
+            self.eat(TokenType.IF)
+            self.eat(TokenType.EXISTS)
+            if_exists = True
+
+        table = self.current().value
+        self.eat(TokenType.IDENT)
+        self.eat(TokenType.SEMICOLON)
+        return DropTable(table,if_exists)
+
+    def parse_delete(self):
+        self.eat(TokenType.DELETE)
+        self.eat(TokenType.FROM)
+
+        table = self.current().value
+        self.eat(TokenType.IDENT)
+
+        where = None
+        if self.current().type == TokenType.WHERE:
+            where = self.parse_where()
+
+        self.eat(TokenType.SEMICOLON)
+        return Delete(table, where)
+
+    def parse_update(self):
+        self.eat(TokenType.UPDATE)
+
+        table = self.current().value
+        self.eat(TokenType.IDENT)
+
+        self.eat(TokenType.SET)
+
+        updates = []
+        while True:
+            col = self.current().value
+            self.eat(TokenType.IDENT)
+
+            self.eat(TokenType.EQ)
+
+            val = self.current().value
+            self.eat(self.current().type)
+
+            updates.append((col, val))
+
+            if self.current().type == TokenType.COMMA:
+                self.eat(TokenType.COMMA)
+            else:
+                break
+
+        where = None
+        if self.current().type == TokenType.WHERE:
+            where = self.parse_where()
+
+        self.eat(TokenType.SEMICOLON)
+        return Update(table, updates, where)
+
+    def parse_alter(self):
+        self.eat(TokenType.ALTER)
+        self.eat(TokenType.TABLE)
+
+        table = self.current().value
+        self.eat(TokenType.IDENT)
+
+        if self.current().type == TokenType.ADD:
+            self.eat(TokenType.ADD)
+            col = self.current().value
+            self.eat(TokenType.IDENT)
+            col_type = self.current().type
+            self.eat(col_type)
+            action = "ADD"
+            details = (col, col_type)
+
+        elif self.current().type == TokenType.CHANGE:
+            self.eat(TokenType.CHANGE)
+            old = self.current().value
+            self.eat(TokenType.IDENT)
+            new = self.current().value
+            self.eat(TokenType.IDENT)
+            col_type = self.current().type
+            self.eat(col_type)
+            action = "CHANGE"
+            details = (old, new, col_type)
+
+        elif self.current().type == TokenType.MODIFY:
+            self.eat(TokenType.MODIFY)
+            col = self.current().value
+            self.eat(TokenType.IDENT)
+            col_type = self.current().type
+            self.eat(col_type)
+            action = "MODIFY"
+            details = (col, col_type)
+
+        else:
+            raise SyntaxError("Invalid ALTER")
+
+        self.eat(TokenType.SEMICOLON)
+        return Alter(table, action, details)
+
+    def parse_truncate(self):
+        self.eat(TokenType.TRUNCATE)
+        self.eat(TokenType.TABLE)
+
+        table = self.current().value
+        self.eat(TokenType.IDENT)
+
+        self.eat(TokenType.SEMICOLON)
+        return Truncate(table)
+
+    def parse_show(self):
+        self.eat(TokenType.SHOW)
+        self.eat(TokenType.TABLES)
+        self.eat(TokenType.SEMICOLON)
+        return ShowTables()
+    
+    def parse_desc(self):
+        self.eat(TokenType.DESC)
+        self.eat(TokenType.TABLE)
+
+        table = self.current().value
+        self.eat(TokenType.IDENT)
+
+        self.eat(TokenType.SEMICOLON)
+        return DescTable(table)

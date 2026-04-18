@@ -2,8 +2,15 @@ from enum import Enum, auto
 
 class TokenType(Enum):
     CREATE = auto()
+    DROP = auto()
+    DELETE = auto()
+    UPDATE = auto()
+    SET = auto()
     TABLE = auto()
 
+    SHOW = auto()
+    TABLES = auto()
+    
     INSERT = auto()
     INTO = auto()  
     VALUES = auto()
@@ -63,6 +70,17 @@ class TokenType(Enum):
     FULL = auto()
     OUTER = auto()
     ON = auto()
+
+    ALTER = auto()
+    ADD = auto()
+    CHANGE = auto()
+    MODIFY = auto()
+    TRUNCATE = auto()
+
+    IF = auto()
+    EXISTS = auto()
+    DESC_TABLE = auto() 
+    DOT = auto()
     
     EOF = auto()
 

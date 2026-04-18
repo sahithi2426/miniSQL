@@ -1,10 +1,15 @@
+class DescTable:
+    def __init__(self, table):
+        self.table = table
+
 class CreateTable:
-    def __init__(self, name, columns,foreign_keys=None,primary_key=None,unique_keys=None):
+    def __init__(self, name, columns,foreign_keys=None,primary_key=None,unique_keys=None, if_not_exists=False):
         self.name = name
         self.columns = columns
         self.foreign_keys=foreign_keys or []
         self.primary_key = primary_key
         self.unique_keys = unique_keys or []
+        self.if_not_exists = if_not_exists
 
     def pretty_print(self):
         print("CREATE TABLE")
@@ -30,11 +35,12 @@ class Insert:
 
 
 class Select:
-    def __init__(self, columns, table, where=None,
+    def __init__(self, columns, table,alias, where=None,
                  group_by=None, having=None, order_by=None,
                  order_type=None, limit=None, joins=None):
         self.columns = columns
         self.table = table
+        self.alias = alias
         self.joins = joins or []
         self.where = where
         self.group_by = group_by
@@ -72,10 +78,11 @@ class Select:
                 join.pretty_print("    ")
 
 class Join:
-    def __init__(self, join_type, table, condition):
+    def __init__(self, join_type, table, condition, alias=None):
         self.join_type = join_type
         self.table = table
         self.condition = condition
+        self.alias = alias
 
     def pretty_print(self, indent=""):
         print(f"{indent}├── {self.join_type} JOIN {self.table} ON")
@@ -101,3 +108,31 @@ class Where:
         elif self.right:
             print(f"{indent}└── {self.right}")
 
+class DropTable:
+    def __init__(self, table, if_exists=False):
+        self.table = table
+        self.if_exists = if_exists
+
+class Delete:
+    def __init__(self, table, where=None):
+        self.table = table
+        self.where = where
+
+class Update:
+    def __init__(self, table, updates, where=None):
+        self.table = table
+        self.updates = updates  # list of (col, val)
+        self.where = where
+
+class Alter:
+    def __init__(self, table, action, details):
+        self.table = table
+        self.action = action  # ADD / CHANGE / MODIFY
+        self.details = details
+
+class Truncate:
+    def __init__(self, table):
+        self.table = table
+
+class ShowTables:
+    pass

@@ -87,11 +87,57 @@ class NestedLoopJoinExec(Executor):
 
     def _combine(self, t1, t2):
         res = {}
+        # left table
         if t1:
-            res.update(t1)
+            for k, v in t1.items():
+                res[f"left.{k}"] = v
+                #res[k] = v   # optional (helps SELECT *)
+
+        # right table
         if t2:
-            res.update(t2)
+            for k, v in t2.items():
+                res[f"right.{k}"] = v
+
         return res
+
+    """def _get_value(self, col, tup):
+        if col is None or tup is None:
+            return None
+        if col in tup:
+            return tup[col]
+
+        short = col.split('.')[-1]
+
+        for k in tup:
+            if k.endswith("." + short):
+                return tup[k]
+
+        return None"""
+    def _get_value(self, col, tup):
+        if col is None or tup is None:
+            return None
+
+        # Handle alias explicitly
+        if '.' in col:
+            alias, column = col.split('.', 1)
+
+            # map alias → left/right
+            if alias == "o":
+                key = f"left.{column}"
+                return tup.get(key)
+
+            elif alias == "c":
+                key = f"right.{column}"
+                return tup.get(key)
+
+        # fallback (no alias)
+        short = col.split('.')[-1]
+
+        for k in tup:
+            if k.endswith("." + short):
+                return tup[k]
+
+        return None
 
     def _evaluate_condition(self, tup):
         if not self.condition:
@@ -104,10 +150,10 @@ class NestedLoopJoinExec(Executor):
         left_col = getattr(self.condition, 'left', None)
         right_col = getattr(self.condition, 'right', None)
 
-        left_val = tup.get(left_col, None)
+        left_val = self._get_value(left_col, tup)
 
         # right side can be another column or a literal
-        right_val = tup.get(right_col, None)
+        right_val = self._get_value(right_col, tup)
         if right_val is None and isinstance(right_col, str):
             if right_col.startswith("'") and right_col.endswith("'"):
                 right_val = right_col.strip("'")

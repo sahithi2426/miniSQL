@@ -1,4 +1,4 @@
-from parser.ast import CreateTable, Insert, Select
+from parser.ast import CreateTable, Insert, Select, DropTable, Delete, Update, Alter, Truncate, ShowTables, DescTable
 
 class SemanticAnalyzer:
     def __init__(self, catalog):
@@ -11,11 +11,30 @@ class SemanticAnalyzer:
             self._analyze_insert(ast)
         elif isinstance(ast, Select):
             self._analyze_select(ast)
+        elif isinstance(ast, DropTable):
+            self._analyze_drop(ast)
+        elif isinstance(ast, Delete):
+            self._analyze_delete(ast)
+        elif isinstance(ast, Update):
+            self._analyze_update(ast)
+        elif isinstance(ast, Alter):
+            self._analyze_alter(ast)
+        elif isinstance(ast, Truncate):
+            self._analyze_truncate(ast)
+        elif isinstance(ast, DescTable):
+            self.catalog.get_table(ast.table)
+        elif isinstance(ast, ShowTables):
+            pass 
         else:
             raise Exception("Unknown AST node")
 
     def _analyze_create(self, node):
-        self.catalog.create_table(node.name, node.columns,node.foreign_keys,node.primary_key,node.unique_keys)
+        print("Semantic Catalog ID:", id(self.catalog))
+        if node.name in self.catalog.tables:
+            if getattr(node,"if_not_exists",False):
+                return
+            raise Exception(f"Table '{node.name}' already exists.")
+        #self.catalog.create_table(node.name, node.columns,node.foreign_keys,node.primary_key,node.unique_keys)
 
     def _analyze_insert(self, node):
         table = self.catalog.get_table(node.table)
@@ -27,7 +46,7 @@ class SemanticAnalyzer:
         col_names = list(table.columns.keys())
         row = dict(zip(col_names, node.values))
 
-        # 🔹 ENTITY INTEGRITY (PRIMARY KEY)
+        # ENTITY INTEGRITY (PRIMARY KEY)
         if table.primary_key:
             pk = table.primary_key
             value = row[pk]
@@ -40,7 +59,7 @@ class SemanticAnalyzer:
             for r in table.rows:
                 if r[pk] == value:
                     raise Exception(f"Duplicate PRIMARY KEY value '{value}'")
-        # 🔹 KEY INTEGRITY (UNIQUE)
+        # KEY INTEGRITY (UNIQUE)
         for uk in table.unique_keys:
             value = row[uk]
 
@@ -48,7 +67,7 @@ class SemanticAnalyzer:
                 if r[uk] == value:
                     raise Exception(f"Duplicate UNIQUE value '{value}' for column '{uk}'")
 
-        # 🔥 Referential integrity check
+        # Referential integrity check
         for fk_col, ref_table_name, ref_col in table.foreign_keys:
 
             ref_table = self.catalog.get_table(ref_table_name)
@@ -62,7 +81,8 @@ class SemanticAnalyzer:
                 )
         print("DEBUG → inserting row:", row)
         print("DEBUG → table rows:", table.rows)
-        table.rows.append(row)
+        #table.rows.append(row)
+        pass
 
     # def _analyze_select(self, node):
     #     table = self.catalog.get_table(node.table)
@@ -92,21 +112,79 @@ class SemanticAnalyzer:
         if node.columns != ["*"]:
             for col in node.columns:
                 c = col.split('(')[1].strip(')') if '(' in col else col
-                if c != "*" and c not in all_cols:
+                base_col = c.split('.')[-1]
+                if c != "*" and base_col not in all_cols:
                     raise Exception(f"Column '{c}' does not exist in any selected tables")
 
         if node.where:
             self._check_where(node.where, all_cols)
 
     def _check_where(self, where_node, all_cols):
+        if where_node is None:
+            return
         if where_node.op in ("AND", "OR"):
             self._check_where(where_node.left, all_cols)
             self._check_where(where_node.right, all_cols)
 
-        elif where_node.left == "NOT":
-            self._check_where(where_node.right, all_cols)
+        elif where_node.op == "NOT":
+            self._check_where(where_node.left, all_cols)
 
         else:
-            column = where_node.left
-            if column not in all_cols:
-                raise Exception(f"Column '{column}' does not exist in selected tables")
+            if isinstance(where_node.left, str):
+                column = where_node.left
+                base_col = column.split('.')[-1]
+                if base_col not in all_cols:
+                    raise Exception(f"Column '{column}' does not exist in selected tables")
+            
+        # also check right side if it's a column
+        if isinstance(where_node.right, str):
+            right = where_node.right
+            base_right = right.split('.')[-1]
+
+            # ignore literals like 'A' or numbers
+            if not right.startswith("'") and not right.isdigit():
+                if base_right not in all_cols:
+                    raise Exception(f"Column '{right}' does not exist in selected tables")
+            
+    def _analyze_drop(self, node):
+         if node.table not in self.catalog.tables:
+            if getattr(node, "if_exists", False):
+                return
+            raise Exception(f"Table '{node.table}' does not exist.")
+        #self.catalog.get_table(node.table)
+
+    def _analyze_delete(self, node):
+        table = self.catalog.get_table(node.table)
+        if node.where:
+            self._check_where(node.where, table.columns.keys())
+
+    def _analyze_update(self, node):
+        table = self.catalog.get_table(node.table)
+
+        for col, _ in node.updates:
+            if col not in table.columns:
+                raise Exception(f"Column '{col}' does not exist")
+
+        if node.where:
+            self._check_where(node.where, table.columns.keys())
+
+    def _analyze_alter(self, node):
+        table = self.catalog.get_table(node.table)
+
+        if node.action == "ADD":
+            col, _ = node.details
+            if col in table.columns:
+                raise Exception(f"Column '{col}' already exists")
+
+        elif node.action == "CHANGE":
+            old, new, _ = node.details
+            if old not in table.columns:
+                raise Exception(f"Column '{old}' does not exist")
+
+        elif node.action == "MODIFY":
+            col, _ = node.details
+            if col not in table.columns:
+                raise Exception(f"Column '{col}' does not exist")
+
+    def _analyze_truncate(self, node):
+        self.catalog.get_table(node.table)

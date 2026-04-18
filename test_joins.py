@@ -9,16 +9,16 @@ from storage.buffer_pool import BufferPoolManager
 from planner.physical_plan_builder import PhysicalPlanBuilder
 
 DB_FILE = "minisql_data.db"
-
 class Table:
-    def __init__(self, name, columns):
+    def __init__(self, name, columns, foreign_keys=None,primary_key=None, unique_keys=None):
         self.name = name
         self.columns = {c: t for c, t in columns}
-        self.primary_key = None
-        self.unique_keys = []
-        self.foreign_keys = []
-        self.rows = []
-        self.estimated_rows = 1000  
+        self.foreign_keys = foreign_keys or []
+        self.primary_key = primary_key
+        self.unique_keys = unique_keys or []
+        self.rows = [] 
+        self.estimated_rows = 1000 
+         
 
 class Catalog:
     def __init__(self):
@@ -102,7 +102,7 @@ test("SELECT * FROM students INNER JOIN departments ON student_dept_id = dept_id
 
 print("\nLEFT JOIN TEST")
 test("SELECT * FROM students LEFT JOIN departments ON student_dept_id = dept_id;")
-test("SELECT * FROM courses LEFT JOIN departments ON course_dept_id = dept_id;");
+test("SELECT * FROM courses LEFT JOIN departments ON course_dept_id = dept_id;")
 print("\nRIGHT JOIN TEST")
 test("SELECT * FROM students RIGHT JOIN departments ON student_dept_id = dept_id;")
 

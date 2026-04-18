@@ -4,16 +4,21 @@ from parser.ast import *
 from semantic.analyzer import SemanticAnalyzer
 
 class Table:
-    def __init__(self, name, columns):
+    def __init__(self, name, columns, foreign_keys=None, primary_key=None, unique_keys=None):
         self.name = name
-        self.columns = [col[0] for col in columns]
+        self.columns = {col[0]: col[1] for col in columns}
+        self.rows = []
+
+        self.foreign_keys = foreign_keys or []
+        self.primary_key = primary_key
+        self.unique_keys = unique_keys or []
 
 class Catalog:
     def __init__(self):
         self.tables = {}
 
-    def create_table(self, name, columns):
-        self.tables[name] = Table(name, columns)
+    def create_table(self, name, columns, foreign_keys=None, primary_key=None, unique_keys=None):
+        self.tables[name] = Table(name, columns, foreign_keys, primary_key, unique_keys)
 
     def get_table(self, name):
         if name not in self.tables:

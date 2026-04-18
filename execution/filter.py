@@ -1,4 +1,5 @@
 from execution.executor import Executor
+from parser.ast import Where
 
 class FilterExec(Executor):
     def __init__(self, child: Executor, predicate):
@@ -17,33 +18,161 @@ class FilterExec(Executor):
             if self._evaluate_predicate(tup):
                 return tup
 
+    def _resolve(self, col, row):
+        print("DEBUG RESOLVE TYPE:", type(col), col)
+        if col is None:
+            return None
+
+        if not isinstance(col, str):
+            return col
+
+        # 1. Exact match
+        if col in row:
+            return row[col]
+
+        # 2. Handle alias.column → column
+        short = col.split('.')[-1]
+
+        if short in row:
+            return row[short]
+
+        # 3. Handle full names like Orders.customer_id
+        for k in row:
+            if k.endswith("." + short):
+                return row[k]
+
+        return None
+    
     def _evaluate_predicate(self, tup):
         if not self.predicate:
             return True
-            
-        op = getattr(self.predicate, 'op', None)
-        if not op:
+
+        return self._eval_node(self.predicate, tup)
+    
+    def _normalize(self, val):
+        if isinstance(val, str) and val.startswith("'"):
+            return val.strip("'")
+        try:
+            return int(val)
+        except:
+            try:
+                return float(val)
+            except:
+                return val
+
+    def _eval_node(self, node, tup):
+        print("ENTERING EVAL NODE")
+        if node is None:
             return True
-            
-        left_col = getattr(self.predicate, 'left', None)
-        right_val = getattr(self.predicate, 'right', None)
-        
-        if left_col not in tup:
-            return False
-            
-        left_val = tup[left_col]
-        
-        # Strip quotes for string comparison
-        if isinstance(right_val, str) and right_val.startswith("'"):
-            right_val = right_val.strip("'")
-            
-        if op == '=' or op == '==':
-            return str(left_val) == str(right_val)
-        elif op == '>':
-            return float(left_val) > float(right_val)
-        elif op == '<':
-            return float(left_val) < float(right_val)
-        elif op == '!=' or op == '<>':
-            return str(left_val) != str(right_val)
-            
+
+        #op = getattr(node, 'op', None)
+        if not isinstance(node, Where):
+            return node
+
+        op = node.op
+        # 1. Handle Logical Operators (AND, OR, NOT)
+        if op == "AND":
+            return self._eval_node(node.left, tup) and self._eval_node(node.right, tup)
+
+        if op == "OR":
+            return self._eval_node(node.left, tup) or self._eval_node(node.right, tup)
+
+        if op == "NOT":
+            # NOT usually wraps the condition in 'left'
+            target = node.left if node.left is not None else node.right
+            return not self._eval_node(target, tup)
+
+        # 2. Handle Comparisons (Basic Predicates)
+        # We check if 'op' is a comparison operator
+        if op in ('=', '==', '>', '<', '!=', '<>', '>=', '<='):
+            left_val = self._eval_node(node.left, tup) if isinstance(node.left, Where) else self._resolve(node.left, tup)
+
+            if left_val is None and not isinstance(node.left, Where):
+                left_val = node.left # Fallback to literal if not a column
+
+            # Resolve Right side
+            right_val = self._eval_node(node.right, tup) if isinstance(node.right, Where) else self._resolve(node.right, tup)
+            if right_val is None and not isinstance(node.right, Where):
+                right_val = node.right
+
+            # Normalize both sides (handle types like '1' vs 1)
+            left_val = self._normalize(left_val)
+            right_val = self._normalize(right_val)
+
+            if left_val is None or right_val is None:
+                return False
+            # Perform comparison
+            if op in ('=', '=='):
+                return left_val == right_val
+            elif op == '>':
+                return left_val > right_val
+            elif op == '<':
+                return left_val < right_val
+            elif op in ('!=', '<>'):
+                return left_val != right_val
+            elif op == '>=':
+                return left_val >= right_val
+            elif op == '<=':
+                return left_val <= right_val
+
+        # Fallback for unexpected node structures
         return False
+    """def _eval_node(self, node, tup):
+            if node is None:
+                return True
+
+            op = getattr(node, 'op', None)
+
+            print("DEBUG:", op, node.left, node.right)
+
+            # -------------------------
+            # LOGICAL OPERATORS
+            # -------------------------
+            if op == "AND":
+                return self._eval_node(node.left, tup) and self._eval_node(node.right, tup)
+
+            if op == "OR":
+                return self._eval_node(node.left, tup) or self._eval_node(node.right, tup)
+
+            if op == "NOT":
+                return not self._eval_node(node.left, tup)
+
+            # -------------------------
+            # BASE COMPARISON
+            # -------------------------
+            if isinstance(node.left, str):
+
+                left_col = node.left
+                right_val = node.right
+
+                left_val = self._resolve(left_col, tup)
+
+                # column vs literal
+                if isinstance(right_val, str) and not right_val.startswith("'") and not right_val.isdigit():
+                    right_val_final = self._resolve(right_val, tup)
+                else:
+                    right_val_final = right_val
+
+                left_val = self._normalize(left_val)
+                right_val_final = self._normalize(right_val_final)
+
+                if left_val is None:
+                    return False
+
+                # 🔥 IMPORTANT: RETURN VALUES HERE
+                if op in ('=', '=='):
+                    return left_val == right_val_final
+
+                elif op == '>':
+                    return left_val > right_val_final
+
+                elif op == '<':
+                    return left_val < right_val_final
+
+                elif op in ('!=', '<>'):
+                    return left_val != right_val_final
+
+            # ❗ fallback
+            return False"""
+
+

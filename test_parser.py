@@ -18,8 +18,8 @@ def test(sql):
     else:
         ast.pretty_print()
 
-test("CREATE TABLE users (id INT, name TEXT);")
-test("INSERT INTO users VALUES (1, 'Alice');")
+test("CREATE TABLE users (id INT, name TEXT, age INT);")
+test("INSERT INTO users VALUES (1, 'Alice', 32);")
 test("SELECT name FROM users;")
 test("SELECT * FROM users;")
 test("select name from users where age > 18;")
@@ -34,14 +34,13 @@ test("SELECT   name    FROM    employees   ;")
 test("SELECT department FROM employees HAVING COUNT(*) > 5;")
 test("SELECT name FROM employees WHERE age > 18 AND NOT salary > 50000;")
 test("SELECT name FROM employees WHERE age > 18 AND salary > 50000 OR department = 'IT';")
-test("SELECT name FROM employees")
-test("SELECT FROM employees;")
-test("SELECT department FROM employees GROUP BY;")
+test("SELECT name FROM employees")#error
+test("SELECT FROM employees;")#error
+test("SELECT department FROM employees GROUP BY;")#error
 test("SELECT COUNT(*) FROM employees;")
 test("SELECT name FROM employees LIMIT 3;")
 test("SELECT name FROM employees WHERE age > 25 AND salary > 50000 OR department = 'HR';")
 test("-- this is a comment")
-test("SELECT name,, age FROM employees;")
+test("SELECT name,,age FROM employees;")#error
 test("SELECT name FROM employees WHERE age > 18 AND NOT salary > 50000;")
 test("SELECT name FROM employees WHERE age > 18 AND salary > 50000 OR department = 'IT';")
-

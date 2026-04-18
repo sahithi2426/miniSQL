@@ -31,7 +31,7 @@ class LogicalOptimizer:
 
         return node
 
-    # 🔥 Cost-Based Optimization: Join Reordering
+    # Cost-Based Optimization: Join Reordering
     def _reorder_join(self, join_node):
         """
         Simple CBO: Reorders join sides based on estimated cardinality.
@@ -70,7 +70,7 @@ class LogicalOptimizer:
             return self._estimate_cost(node.left_child) * self._estimate_cost(node.right_child) // 10
         return 1000
 
-    # 🔥 Predicate Pushdown (Rule-Based Optimization)
+    # Predicate Pushdown (Rule-Based Optimization)
     def _predicate_pushdown(self, filter_node):
         """ Pushes a filter past a Join to the base tables if possible. """
         child = filter_node.child
@@ -130,7 +130,7 @@ class LogicalOptimizer:
                 pass
         return False
 
-    # 🔥 Extract all columns used in WHERE condition
+    # Extract all columns used in WHERE condition
     def _extract_columns(self, where_node):
         cols = set()
 
@@ -144,7 +144,7 @@ class LogicalOptimizer:
 
         # Handle NOT
         elif getattr(where_node, "op", None) == "NOT":
-            cols |= self._extract_columns(where_node.right)
+            cols |= self._extract_columns(where_node.left)
 
         # Leaf condition (column op value)
         else:
@@ -154,8 +154,11 @@ class LogicalOptimizer:
 
         return cols
 
-    # 🔥 Projection Pushdown Optimization
+    # Projection Pushdown Optimization
     def _safe_pushdown(self, project):
+        if project.columns == ["*"]:
+            return project
+
         if isinstance(project.child, LogicalFilter):
             filter_node = project.child
 

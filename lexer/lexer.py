@@ -39,6 +39,21 @@ KEYWORDS = {
     "FULL": TokenType.FULL,
     "OUTER": TokenType.OUTER,
     "ON": TokenType.ON,
+
+    "DROP": TokenType.DROP,
+    "DELETE": TokenType.DELETE,
+    "UPDATE": TokenType.UPDATE,
+    "SET": TokenType.SET,
+    "ALTER": TokenType.ALTER,
+    "ADD": TokenType.ADD,
+    "CHANGE": TokenType.CHANGE,
+    "MODIFY": TokenType.MODIFY,
+    "TRUNCATE": TokenType.TRUNCATE,
+    "SHOW": TokenType.SHOW,
+    "TABLES": TokenType.TABLES,
+    "IF": TokenType.IF,
+    "EXISTS": TokenType.EXISTS,
+    "DESC": TokenType.DESC, 
 }
 
 TOKEN_SPEC = [
@@ -58,6 +73,7 @@ TOKEN_SPEC = [
     ("EQ", r"="),
     ("STAR", r"\*"),
     ("SKIP", r"[ \t\n]+"),
+    ("DOT", r"\."),
 ]
 
 class Lexer:
