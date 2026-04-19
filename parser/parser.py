@@ -18,27 +18,35 @@ class Parser:
     def parse(self):
         if self.current().type == TokenType.EOF:
             return None
+
         if self.current().type == TokenType.CREATE:
-            return self.parse_create()
-        if self.current().type == TokenType.INSERT:
-            return self.parse_insert()
-        if self.current().type == TokenType.SELECT:
-            return self.parse_select()
-        if self.current().type == TokenType.DROP:
-            return self.parse_drop()
-        if self.current().type == TokenType.DELETE:
-            return self.parse_delete()
-        if self.current().type == TokenType.UPDATE:
-            return self.parse_update()
-        if self.current().type == TokenType.ALTER:
-            return self.parse_alter()
-        if self.current().type == TokenType.TRUNCATE:
-            return self.parse_truncate()
-        if self.current().type == TokenType.SHOW:
-            return self.parse_show()
-        if self.current().type == TokenType.DESC:
-            return self.parse_desc()
-        raise SyntaxError("Unknown statement")
+            stmt = self.parse_create()
+        elif self.current().type == TokenType.INSERT:
+            stmt = self.parse_insert()
+        elif self.current().type == TokenType.SELECT:
+            stmt = self.parse_select()
+        elif self.current().type == TokenType.DROP:
+            stmt = self.parse_drop()
+        elif self.current().type == TokenType.DELETE:
+            stmt = self.parse_delete()
+        elif self.current().type == TokenType.UPDATE:
+            stmt = self.parse_update()
+        elif self.current().type == TokenType.ALTER:
+            stmt = self.parse_alter()
+        elif self.current().type == TokenType.TRUNCATE:
+            stmt = self.parse_truncate()
+        elif self.current().type == TokenType.SHOW:
+            stmt = self.parse_show()
+        elif self.current().type == TokenType.DESC:
+            stmt = self.parse_desc()
+        else:
+            raise SyntaxError("Unknown statement")
+
+        # CRITICAL CHECK
+        if self.current().type != TokenType.EOF:
+            raise SyntaxError(f"Unexpected token '{self.current().value}'")
+
+        return stmt
 
     def parse_create(self):
         self.eat(TokenType.CREATE)
@@ -185,7 +193,8 @@ class Parser:
                 else:
                     columns.append(table)"""
                 col = self.parse_identifier()
-                columns.append(col)
+                if col.upper() not in [c for c in columns] and col.upper() not in ["*"]:
+                    columns.append(col)
 
             else:
                 raise SyntaxError("Invalid column in SELECT")
@@ -198,6 +207,9 @@ class Parser:
         self.eat(TokenType.FROM)
         table = self.current().value
         self.eat(TokenType.IDENT)
+        # CRITICAL FIX
+        if self.current().type == TokenType.IDENT:
+            raise SyntaxError(f"Unexpected token '{self.current().value}' after table name")
         alias = None
         if self.current().type == TokenType.IDENT:
             alias = self.current().value
@@ -262,6 +274,8 @@ class Parser:
             limit = self.current().value
             self.eat(TokenType.NUMBER)
 
+        if self.current().type != TokenType.SEMICOLON:
+            raise SyntaxError(f"Unexpected token '{self.current().value}' in SELECT")
         self.eat(TokenType.SEMICOLON)
         return Select(columns, table, alias, where, group_by, having, order_by, order_type, limit, joins)
     
@@ -358,7 +372,7 @@ class Parser:
             right = self.current().value
             self.eat(self.current().type)
 
-        print(f"DEBUG PARSER -> LEFT: {left} OP: {op} RIGHT: {right}")
+        #print(f"DEBUG PARSER -> LEFT: {left} OP: {op} RIGHT: {right}")
         return Where(left, op, right)
 
     def parse_having(self):

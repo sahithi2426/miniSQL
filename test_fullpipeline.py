@@ -16,16 +16,43 @@ catalog = Catalog()
 analyzer = SemanticAnalyzer(catalog)
 logical_builder = LogicalPlanBuilder()
 optimizer = LogicalOptimizer(catalog)
-physical_builder = PhysicalPlanBuilder(catalog)
+physical_builder = PhysicalPlanBuilder(catalog, analyzer)
 
 print("Initial tables:", catalog.tables)
 print("Test Catalog ID:", id(catalog))
+
+def clean_query(sql: str):
+    lines = sql.split('\n')
+    cleaned = []
+
+    for line in lines:
+        line = line.strip()
+
+        # skip full-line comments
+        if line.startswith("--") or line == "":
+            continue
+
+        # remove inline comments
+        if "--" in line:
+            line = line.split("--")[0].strip()
+
+        if line:
+            cleaned.append(line)
+
+    return " ".join(cleaned)
+
 def test(sql: str):
     print("\n" + "="*30)
     print("INPUT:")
     print(sql)
 
     try:
+        sql = clean_query(sql)
+
+        if not sql:
+            print("(comment / empty query skipped)")
+            return
+        
         # LEXER + PARSER
         lexer = Lexer(sql)
         #print("Done this 1")
@@ -77,7 +104,7 @@ def test(sql: str):
         print("\nERROR:", e)
 
 
-test("CREATE TABLE Orders (id INT, customer_id INT);")
+"""test("CREATE TABLE Orders (id INT, customer_id INT);")
 test("CREATE TABLE Customers (id INT, name TEXT);")
 
 test("INSERT INTO Orders VALUES (1, 101);")
@@ -169,4 +196,14 @@ test("SELECT * FROM Orders;")
 test("SELECT wrong_col FROM Orders;")
 test("SELECT * FROM Unknown;")
 test("SELECT * FROM Orders WHERE wrong = 1;")
+test("SELECT DISTINCT id FROM Orders;")"""
 
+test("CREATE TABLE users (id INT,email TEXT,PRIMARY KEY(id),UNIQUE(email));")
+test("INSERT INTO users VALUES (1, 'a@gmail.com');")
+test("INSERT INTO users VALUES (2, 'b@gmail.com');")
+test("INSERT INTO users VALUES (1, 'a@gmail.com');")
+test("INSERT INTO users VALUES (2, 'b@gmail.com');")
+test("INSERT INTO users VALUES (3, 'a@gmail.com');")
+test("INSERT INTO users VALUES (NULL, 'x@gmail.com');")
+test("SELECT * FROM users; -- inline comment")
+test("SELECT id FROM users UNION;")

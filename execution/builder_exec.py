@@ -10,8 +10,9 @@ from execution.orderby import OrderByExec
 from execution.limit import LimitExec 
 
 class PhysicalPlanBuilder:
-    def __init__(self, catalog):
+    def __init__(self, catalog, analyzer):
         self.catalog = catalog
+        self.analyzer = analyzer
 
     def build(self, plan):
 
@@ -37,7 +38,7 @@ class PhysicalPlanBuilder:
 
         elif isinstance(plan, LogicalInsert):
             table = self.catalog.get_table(plan.table)
-            return InsertExec(table.heap, plan.values, list(table.columns.keys()))
+            return InsertExec(table.heap, plan.values, list(table.columns.keys()),self.analyzer,plan.table)
 
         elif isinstance(plan, LogicalDelete):
             return DeleteExec(self.catalog, plan)

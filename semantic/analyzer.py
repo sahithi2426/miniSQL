@@ -4,6 +4,16 @@ class SemanticAnalyzer:
     def __init__(self, catalog):
         self.catalog = catalog
 
+    def _clean(self, val):
+        if val == "NULL":
+            return None
+        if isinstance(val, str):
+            if val.startswith("'") and val.endswith("'"):
+                return val[1:-1]
+            if val.isdigit():
+                return int(val)
+        return val
+
     def analyze(self, ast):
         if isinstance(ast, CreateTable):
             self._analyze_create(ast)
@@ -44,7 +54,7 @@ class SemanticAnalyzer:
 
         # Map column -> value
         col_names = list(table.columns.keys())
-        row = dict(zip(col_names, node.values))
+        row = {k: self._clean(v) for k, v in zip(col_names, node.values)}
 
         # ENTITY INTEGRITY (PRIMARY KEY)
         if table.primary_key:
@@ -64,7 +74,7 @@ class SemanticAnalyzer:
             value = row[uk]
 
             for r in table.rows:
-                if r[uk] == value:
+                if self._clean(r[uk]) == self._clean(value):
                     raise Exception(f"Duplicate UNIQUE value '{value}' for column '{uk}'")
 
         # Referential integrity check
