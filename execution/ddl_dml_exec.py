@@ -1,5 +1,21 @@
 from execution.executor import Executor
+from execution.filter import FilterExec
 
+class DummyScan:
+    def __init__(self, rows):
+        self.rows = rows
+        self.idx = 0
+
+    def init(self):
+        self.idx = 0
+
+    def next(self):
+        if self.idx >= len(self.rows):
+            return None
+        row = self.rows[self.idx]
+        self.idx += 1
+        return row
+    
 class CreateTableExec(Executor):
     def __init__(self, catalog, plan):
         self.catalog = catalog
@@ -43,10 +59,16 @@ class DeleteExec(Executor):
         before = len(table.rows)
 
         if self.plan.predicate:
-            table.rows = [
-                r for r in table.rows
-                if not (str(r[self.plan.predicate.left]) == self.plan.predicate.right)
-            ]
+            filtered = FilterExec(DummyScan(table.rows), self.plan.predicate)
+            filtered.init()
+            to_delete = []
+            while True:
+                row = filtered.next()
+                if row is None:
+                    break
+                to_delete.append(row)
+
+            table.rows = [r for r in table.rows if r not in to_delete]
         else:
             table.rows = []
 
@@ -63,6 +85,21 @@ class UpdateExec(Executor):
     def init(self):
         self.done = False
 
+
+    def normalize(self, val):
+        if isinstance(val, str):
+            val = val.strip()   # remove spaces
+
+            if val.startswith("'") and val.endswith("'"):
+                return val.strip("'")
+
+            try:
+                return int(val)   # safer than isdigit()
+            except:
+                return val
+
+        return val
+
     def next(self):
         if self.done:
             return None
@@ -70,13 +107,48 @@ class UpdateExec(Executor):
         table = self.catalog.get_table(self.plan.table)
         count = 0
 
+        #print("DEBUG → table rows BEFORE:", table.rows)
+        #print("DEBUG → predicate:", self.plan.predicate)
+        #print("DEBUG → updates:", self.plan.updates)
         for row in table.rows:
+            #print("\nDEBUG → checking row:", row)
+
+
             if self.plan.predicate:
-                if str(row[self.plan.predicate.left]) != self.plan.predicate.right:
+                scanner = DummyScan([row])   # wrap single row
+                filter_exec = FilterExec(scanner, self.plan.predicate)
+                filter_exec.init()
+
+                result = filter_exec.next()
+
+                if result is None:
                     continue
 
+            """if self.plan.predicate:
+                left_key = self.plan.predicate.left
+                right = self.plan.predicate.right
+
+                print("DEBUG → raw left_key:", left_key)
+                print("DEBUG → raw right:", right)
+                left = self.normalize(row.get(left_key))
+                if hasattr(right, "value"):
+                    right = right.value
+                right = self.normalize(right)
+
+                print("DEBUG → normalized left:", left)
+                print("DEBUG → normalized right:", right)
+                print("DEBUG → types:", type(left), type(right))
+                print("DEBUG → equality check:", left == right)
+                if left != right:
+                    print("DEBUG → condition failed")
+                    continue
+                else:
+                    print("DEBUG → condition passed")"""
+
             for col, val in self.plan.updates:
-                row[col] = val.strip("'")
+                #row[col] = val.strip("'")
+                #print(f"DEBUG → updating {col} from {row.get(col)} to {val}")
+                row[col] = self.normalize(val)
 
             count += 1
 

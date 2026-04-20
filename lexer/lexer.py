@@ -53,7 +53,11 @@ KEYWORDS = {
     "TABLES": TokenType.TABLES,
     "IF": TokenType.IF,
     "EXISTS": TokenType.EXISTS,
-    "DESC": TokenType.DESC, 
+    "DESC": TokenType.DESC,
+    "BETWEEN": TokenType.BETWEEN,
+    "LIKE": TokenType.LIKE,
+    "IS": TokenType.IS,
+    "NULL": TokenType.NULL,
 }
 
 TOKEN_SPEC = [
@@ -74,6 +78,10 @@ TOKEN_SPEC = [
     ("STAR", r"\*"),
     ("SKIP", r"[ \t\n]+"),
     ("DOT", r"\."),
+    ("PLUS", r"\+"),
+    ("MINUS", r"-"),
+    ("DIV", r"/"),
+    ("MOD", r"%"),
 ]
 
 class Lexer:

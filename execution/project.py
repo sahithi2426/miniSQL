@@ -8,6 +8,24 @@ class ProjectExec(Executor):
     def init(self):
         self.child.init()
 
+
+    def _resolve(self, col, tup):
+        # direct match (BEST case)
+        if col in tup:
+            return tup[col]
+
+        short = col.split('.')[-1]
+
+        # find matching column
+        matches = [tup[k] for k in tup if k.endswith("." + short)]
+
+        if len(matches) == 1:
+            return matches[0]
+        elif len(matches) > 1:
+            # ambiguous (for now pick first)
+            return matches[0]
+
+        return None
     def next(self):
         tup = self.child.next()
         if tup is None:
@@ -22,27 +40,9 @@ class ProjectExec(Executor):
             if not isinstance(col, str):
                 continue
 
-            # HANDLE alias.column
-            if "." in col:
-                alias, field = col.split(".", 1)
+            val = self._resolve(col, tup)
 
-                if alias == "o":
-                    key = f"left.{field}"
-                    if key in tup:
-                        proj[field] = tup[key]
-
-                elif alias == "c":
-                    key = f"right.{field}"
-                    if key in tup:
-                        proj[field] = tup[key]
-
-            # fallback (no alias)
-            elif col in tup:
-                proj[col] = tup[col]
-            else:
-                short = col.split('.')[-1]
-                for k in tup:
-                    if k.endswith("." + short):
-                        proj[short] = tup[k]
+            # keep original column name (o.id, c.name)
+            proj[col] = val
 
         return proj

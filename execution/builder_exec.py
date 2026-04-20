@@ -14,6 +14,19 @@ class PhysicalPlanBuilder:
         self.catalog = catalog
         self.analyzer = analyzer
 
+
+    def _get_source_name(self, plan):
+        # If scan → use alias if exists, else table name
+        if isinstance(plan, LogicalScan):
+            return plan.alias if plan.alias else plan.table
+
+        # If filter/project → recurse
+        if hasattr(plan, "child"):
+            return self._get_source_name(plan.child)
+
+        # If join → not needed (should not happen here)
+        return None
+    
     def build(self, plan):
 
         if isinstance(plan, LogicalScan):
@@ -34,7 +47,10 @@ class PhysicalPlanBuilder:
         elif isinstance(plan, LogicalJoin):
             left = self.build(plan.left_child)
             right = self.build(plan.right_child)
-            return NestedLoopJoinExec(left, right, plan.join_type, plan.condition)
+            left_name = self._get_source_name(plan.left_child)
+            right_name = self._get_source_name(plan.right_child)
+
+            return NestedLoopJoinExec(left, right, plan.join_type, plan.condition,left_name,right_name)
 
         elif isinstance(plan, LogicalInsert):
             table = self.catalog.get_table(plan.table)

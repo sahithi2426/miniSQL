@@ -1,5 +1,6 @@
 from execution.executor import Executor
 from parser.ast import Where
+from parser.ast import BinaryOp, UnaryOp, Literal, Column
 
 class FilterExec(Executor):
     def __init__(self, child: Executor, predicate):
@@ -19,7 +20,7 @@ class FilterExec(Executor):
                 return tup
 
     def _resolve(self, col, row):
-        print("DEBUG RESOLVE TYPE:", type(col), col)
+        #print("DEBUG RESOLVE TYPE:", type(col), col)
         if col is None:
             return None
 
@@ -50,23 +51,99 @@ class FilterExec(Executor):
         return self._eval_node(self.predicate, tup)
     
     def _normalize(self, val):
-        if isinstance(val, str) and val.startswith("'"):
-            return val.strip("'")
-        try:
-            return int(val)
-        except:
+        if val is None:
+            return None
+
+        if isinstance(val, str):
+            if val.startswith("'") and val.endswith("'"):
+                val = val.strip("'")
+
             try:
-                return float(val)
+                return int(val)
             except:
-                return val
+                try:
+                    return float(val)
+                except:
+                    return val
+
+        return val
 
     def _eval_node(self, node, tup):
-        print("ENTERING EVAL NODE")
+        #print("ENTERING EVAL NODE")
         if node is None:
             return True
-
+        if isinstance(node, Literal):
+            return node.value
         #op = getattr(node, 'op', None)
-        if not isinstance(node, Where):
+        if isinstance(node, str):
+            if node.startswith("'") and node.endswith("'"):
+                return node.strip("'")
+            return self._resolve(node, tup)
+        #  NEW EXPRESSION HANDLING
+        #print("DEBUG:", op, node.left, node.right)
+        if isinstance(node, BinaryOp):
+            left = self._eval_node(node.left, tup)
+            right = self._eval_node(node.right, tup)
+
+            left = self._normalize(left)
+            right = self._normalize(right)
+
+            if node.op == '+': return left + right
+            if node.op == '-': return left - right
+            if node.op == '*': return left * right
+            if node.op == '/':
+                if right == 0:
+                    raise Exception("Division by zero")
+                return left / right
+            if node.op == '%': return left % right
+
+            if left is None or right is None:
+                return False
+            if node.op == '=': return left == right
+            if node.op == '!=': return left != right
+            if node.op == '>': return left > right
+            if node.op == '<': return left < right
+            if node.op == '>=': return left >= right
+            if node.op == '<=': return left <= right
+
+            if node.op == 'AND':
+                return bool(left) and bool(right)
+
+            if node.op == 'OR':
+                return bool(left) or bool(right)
+
+            if node.op == 'LIKE':
+                pattern = right
+                value = left
+
+                if pattern is None or value is None:
+                    return False
+
+                pattern = str(pattern)
+                value = str(value)
+
+                if pattern.startswith('%') and pattern.endswith('%'):
+                    return pattern[1:-1] in value
+                elif pattern.endswith('%'):
+                    return value.startswith(pattern[:-1])
+                elif pattern.startswith('%'):
+                    return value.endswith(pattern[1:])
+                else:
+                    return value == pattern
+
+            if node.op == "IS NULL":
+                return left is None
+
+            if node.op == "IS NOT NULL":
+                return left is not None
+
+            return False
+        # Unary (NOT)
+        if isinstance(node, UnaryOp):
+            val = self._eval_node(node.operand, tup)
+            return not val
+
+        if not hasattr(node, "op"):
             return node
 
         op = node.op
@@ -103,16 +180,28 @@ class FilterExec(Executor):
                 return False
             # Perform comparison
             if op in ('=', '=='):
+                if left_val is None or right_val is None:
+                    return False
                 return left_val == right_val
             elif op == '>':
+                if left_val is None or right_val is None:
+                    return False
                 return left_val > right_val
             elif op == '<':
+                if left_val is None or right_val is None:
+                    return False
                 return left_val < right_val
             elif op in ('!=', '<>'):
+                if left_val is None or right_val is None:
+                    return False
                 return left_val != right_val
             elif op == '>=':
+                if left_val is None or right_val is None:
+                    return False
                 return left_val >= right_val
             elif op == '<=':
+                if left_val is None or right_val is None:
+                    return False
                 return left_val <= right_val
 
         # Fallback for unexpected node structures

@@ -48,6 +48,10 @@ class Parser:
 
         return stmt
 
+
+    def parse_expression(self):
+        return self.parse_or()
+    
     def parse_create(self):
         self.eat(TokenType.CREATE)
         self.eat(TokenType.TABLE)
@@ -208,13 +212,23 @@ class Parser:
         table = self.current().value
         self.eat(TokenType.IDENT)
         # CRITICAL FIX
-        if self.current().type == TokenType.IDENT:
-            raise SyntaxError(f"Unexpected token '{self.current().value}' after table name")
+        
         alias = None
         if self.current().type == TokenType.IDENT:
-            alias = self.current().value
-            self.eat(TokenType.IDENT)
+            
+            next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
+            if next_token and next_token.type  == TokenType.DOT:
+                pass
+            else:
+                alias = self.current().value
+                self.eat(TokenType.IDENT)
 
+        valid_next = {TokenType.INNER, TokenType.LEFT, TokenType.RIGHT, TokenType.FULL, TokenType.JOIN,
+        TokenType.WHERE, TokenType.GROUP, TokenType.ORDER, TokenType.LIMIT,
+        TokenType.SEMICOLON}
+
+        if self.current().type not in valid_next:
+            raise SyntaxError(f"Unexpected token '{self.current().value}' after table")
         joins = []
         while self.current().type in (TokenType.INNER, TokenType.LEFT, TokenType.RIGHT, TokenType.FULL, TokenType.JOIN):
             join_type = "INNER"
@@ -309,7 +323,7 @@ class Parser:
             condition = self.parse_not() 
             return Where(condition, "NOT", None)
 
-        return self._parse_primary()
+        return self.parse_comparison()
     
 
     def parse_identifier(self):
@@ -324,16 +338,38 @@ class Parser:
 
         return name
 
-    def _parse_primary(self):
-        # Handle Parentheses: (id = 1 OR id = 3)
-        if self.current().type == TokenType.LPAREN:
+    def parse_primary(self):
+        token = self.current()
+
+        # NUMBER
+        if token.type == TokenType.NUMBER:
+            val = int(token.value)
+            self.eat(TokenType.NUMBER)
+            return Literal(val)
+
+        # STRING
+        if token.type == TokenType.STRING:
+            val = token.value.strip("'")
+            self.eat(TokenType.STRING)
+            return Literal(val)
+
+        # IDENTIFIER (column)
+        if token.type == TokenType.IDENT:
+            return self.parse_identifier()
+
+        # Parenthesis
+        if token.type == TokenType.LPAREN:
             self.eat(TokenType.LPAREN)
-            node = self.parse_or()
+            expr = self.parse_expression()
             self.eat(TokenType.RPAREN)
-            return node
-        
-        # Otherwise, it's a standard comparison (id = 1)
-        return self.parse_comparison()
+            return expr
+
+        # NULL
+        if token.type == TokenType.NULL:
+            self.eat(TokenType.NULL)
+            return None
+
+        raise SyntaxError(f"Unexpected token {token}")
     
     """def parse_comparison(self):
         col = self.parse_identifier()
@@ -353,7 +389,7 @@ class Parser:
             raise SyntaxError("Invalid Comparision Value")
         print("LEFT:", col, "OP:", op, "RIGHT:", val)
         return Where(col, op, val)"""
-    def parse_comparison(self):
+    """def parse_comparison(self):
         # 1. Parse Left Side
         left = self.parse_identifier()
 
@@ -373,7 +409,48 @@ class Parser:
             self.eat(self.current().type)
 
         #print(f"DEBUG PARSER -> LEFT: {left} OP: {op} RIGHT: {right}")
-        return Where(left, op, right)
+        return Where(left, op, right)"""
+    def parse_comparison(self):
+        left = self.parse_term()
+
+        #  BETWEEN
+        if self.current().type == TokenType.BETWEEN:
+            self.eat(TokenType.BETWEEN)
+            low = self.parse_term()
+            self.eat(TokenType.AND)
+            high = self.parse_term()
+
+            return BinaryOp(
+                BinaryOp(left, ">=", low),
+                "AND",
+                BinaryOp(left, "<=", high)
+            )
+
+        # LIKE
+        if self.current().type == TokenType.LIKE:
+            self.eat(TokenType.LIKE)
+            pattern = self.current().value
+            self.eat(TokenType.STRING)
+            return BinaryOp(left, "LIKE", pattern)
+
+        # IS NULL
+        if self.current().type == TokenType.IS:
+            self.eat(TokenType.IS)
+            if self.current().type == TokenType.NULL:
+                self.eat(TokenType.NULL)
+                return BinaryOp(left, "IS NULL", None)
+
+        # NORMAL COMPARISON
+        if self.current().type in (
+            TokenType.EQ, TokenType.GT, TokenType.LT,
+            TokenType.GTE, TokenType.LTE, TokenType.NOT_EQ
+        ):
+            op = self.current().value
+            self.eat(self.current().type)
+            right = self.parse_term()
+            return BinaryOp(left, op, right)
+
+        return left
 
     def parse_having(self):
     # Support aggregate like COUNT(*)
@@ -540,3 +617,23 @@ class Parser:
 
         self.eat(TokenType.SEMICOLON)
         return DescTable(table)
+    def parse_term(self):
+        node = self.parse_factor()
+
+        while self.current().type in (TokenType.PLUS, TokenType.MINUS):
+            op = self.current().value
+            self.eat(self.current().type)
+            right = self.parse_factor()
+            node = BinaryOp(node, op, right)
+
+        return node
+    def parse_factor(self):
+        node = self.parse_primary()
+
+        while self.current().type in (TokenType.STAR, TokenType.DIV, TokenType.MOD):
+            op = self.current().value
+            self.eat(self.current().type)
+            right = self.parse_primary()
+            node = BinaryOp(node, op, right)
+
+        return node

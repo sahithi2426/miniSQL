@@ -30,6 +30,20 @@ class LogicalOptimizer:
             return self._reorder_join(node)
 
         return node
+    def _split_predicates(self, predicate):
+        """Break AND conditions into individual predicates"""
+        if getattr(predicate, "op", None) == "AND":
+            return self._split_predicates(predicate.left) + self._split_predicates(predicate.right)
+        return [predicate]
+
+
+    def _combine_predicates(self, preds):
+        if not preds:
+            return None
+        result = preds[0]
+        for p in preds[1:]:
+            result = type(result)(result, "AND", p)
+        return result
 
     # Cost-Based Optimization: Join Reordering
     def _reorder_join(self, join_node):
@@ -72,39 +86,53 @@ class LogicalOptimizer:
 
     # Predicate Pushdown (Rule-Based Optimization)
     def _predicate_pushdown(self, filter_node):
-        """ Pushes a filter past a Join to the base tables if possible. """
         child = filter_node.child
+
         if isinstance(child, LogicalJoin) and child.join_type == "INNER":
-            predicate_cols = self._extract_columns(filter_node.predicate)
-            
-            # Check which tables the predicate columns belong to
-            left_tables = self._extract_tables(child.left_child)
-            right_tables = self._extract_tables(child.right_child)
-            
-            # Assuming simple predicates. A full implementation would parse columns like `table.col`
-            # Here we do a simplified check: do all predicate columns belong to just ONE side?
-            # For MiniSQL, we check table schemas:
-            if self.catalog:
+
+            # NEW: split predicates
+            predicates = self._split_predicates(filter_node.predicate)
+
+            left_preds = []
+            right_preds = []
+            remaining_preds = []
+
+            for pred in predicates:
+                cols = self._extract_columns(pred)
+
                 left_has_all = True
                 right_has_all = True
-                for col in predicate_cols:
+
+                for col in cols:
                     if not self._column_in_plan(col, child.left_child):
                         left_has_all = False
                     if not self._column_in_plan(col, child.right_child):
                         right_has_all = False
-                        
+
                 if left_has_all and not right_has_all:
-                    # Push filter to the left child
-                    new_filter = LogicalFilter(filter_node.predicate, child.left_child)
-                    child.left_child = new_filter
-                    return child # Replaced Filter(Join(L, R)) with Join(Filter(L), R)
-                    
-                if right_has_all and not left_has_all:
-                    # Push filter to the right child
-                    new_filter = LogicalFilter(filter_node.predicate, child.right_child)
-                    child.right_child = new_filter
-                    return child
-                    
+                    left_preds.append(pred)
+                elif right_has_all and not left_has_all:
+                    right_preds.append(pred)
+                else:
+                    remaining_preds.append(pred)
+
+            # push to left
+            if left_preds:
+                combined = self._combine_predicates(left_preds)
+                child.left_child = LogicalFilter(combined, child.left_child)
+
+            # push to right
+            if right_preds:
+                combined = self._combine_predicates(right_preds)
+                child.right_child = LogicalFilter(combined, child.right_child)
+
+            # if something still remains, keep filter above
+            if remaining_preds:
+                combined = self._combine_predicates(remaining_preds)
+                return LogicalFilter(combined, child)
+
+            return child
+
         return filter_node
         
     def _extract_tables(self, plan):

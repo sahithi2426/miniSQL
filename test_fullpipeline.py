@@ -104,7 +104,7 @@ def test(sql: str):
         print("\nERROR:", e)
 
 
-"""test("CREATE TABLE Orders (id INT, customer_id INT);")
+test("CREATE TABLE Orders (id INT, customer_id INT);")
 test("CREATE TABLE Customers (id INT, name TEXT);")
 
 test("INSERT INTO Orders VALUES (1, 101);")
@@ -196,7 +196,7 @@ test("SELECT * FROM Orders;")
 test("SELECT wrong_col FROM Orders;")
 test("SELECT * FROM Unknown;")
 test("SELECT * FROM Orders WHERE wrong = 1;")
-test("SELECT DISTINCT id FROM Orders;")"""
+test("SELECT DISTINCT id FROM Orders;")
 
 test("CREATE TABLE users (id INT,email TEXT,PRIMARY KEY(id),UNIQUE(email));")
 test("INSERT INTO users VALUES (1, 'a@gmail.com');")
@@ -206,4 +206,3 @@ test("INSERT INTO users VALUES (2, 'b@gmail.com');")
 test("INSERT INTO users VALUES (3, 'a@gmail.com');")
 test("INSERT INTO users VALUES (NULL, 'x@gmail.com');")
 test("SELECT * FROM users; -- inline comment")
-test("SELECT id FROM users UNION;")

@@ -78,12 +78,6 @@ def test(sql: str):
         #print("Done this 6")
         # OPTIMIZATION
         logical_plan = optimizer.optimize(logical_plan)
-        print("\n--- RELATIONAL ALGEBRA AFTER OPTIMIZATION ---")
-        stmt = dml_ddl_to_ra(logical_plan)
-        if stmt:
-            print(stmt)
-        else:
-            print(to_relational_algebra(logical_plan,"",True))
         #print("Done this 7")
         # PHYSICAL PLAN
         physical_plan = physical_builder.build(logical_plan)
@@ -109,40 +103,18 @@ def test(sql: str):
     except Exception as e:
         print("\nERROR:", e)
 
-test("CREATE TABLE students (id INT,name TEXT,student_dept_id INT,PRIMARY KEY(id));");
-test("CREATE TABLE departments (dept_id INT,dept_name TEXT,PRIMARY KEY(dept_id));");
-test("CREATE TABLE courses (course_id INT,course_dept_id INT,course_name TEXT,PRIMARY KEY(course_id));");
-
-test("INSERT INTO students VALUES (1, 'Alice',10);")
-test("INSERT INTO students VALUES (2, 'Bob',20);")
-test("INSERT INTO students VALUES (3, 'Charlie',30);")
-test("INSERT INTO students VALUES (4, 'David',NULL);")
-
-test("INSERT INTO departments VALUES (10,'CSE');")
-test("INSERT INTO departments VALUES (20,'ECE');")
-test("INSERT INTO departments VALUES (40,'MECH');")
-
-test("INSERT INTO courses VALUES (101, 10, 'DSA');")
-test("INSERT INTO courses VALUES (102, 20, 'Circuits');")
-test("INSERT INTO courses VALUES (103, 10, 'OS');")
-test("INSERT INTO courses VALUES (104, 50, 'Thermodynamics');")
-
-"""print("\nINNER JOIN TEST")
-test("SELECT * FROM students INNER JOIN departments ON student_dept_id = dept_id;")
-
-print("\nLEFT JOIN TEST")
-test("SELECT * FROM students LEFT JOIN departments ON student_dept_id = dept_id;")
-test("SELECT * FROM courses LEFT JOIN departments ON course_dept_id = dept_id;")
-print("\nRIGHT JOIN TEST")
-test("SELECT * FROM students RIGHT JOIN departments ON student_dept_id = dept_id;")
-
-print("\nFULL JOIN TEST")
-test("SELECT * FROM students FULL JOIN departments ON student_dept_id = dept_id;")"""
-
-
-test("SELECT * FROM courses INNER JOIN departments ON course_dept_id = dept_id WHERE dept_name = 'CSE';")
-test("SELECT * FROM students WHERE student_dept_id > 10 AND id < 3;")
-test("SELECT * FROM students INNER JOIN departments ON student_dept_id = dept_id WHERE student_dept_id > 10 AND dept_name = 'ECE';")
-# Final Cleanup
-#buffer_pool.flush_all_pages()
-#disk_manager.close()
+test("CREATE TABLE users (id INT, name TEXT);")
+test("INSERT INTO users VALUES (1, 'Alice');")
+test("INSERT INTO users VALUES (2, 'Bob');")
+test("INSERT INTO users VALUES (3, 'Anu');")
+test("SELECT * FROM users WHERE id + 1 > 2;")
+test("SELECT * FROM users WHERE id > 1 AND name = 'Bob';")
+test("SELECT * FROM users WHERE id = 1 OR id = 3;")
+test("SELECT * FROM users WHERE NOT id = 1;")
+test("SELECT * FROM users WHERE id = 1 OR id = 2 AND id = 3;")
+test("SELECT * FROM users WHERE name LIKE 'A%';")
+test("SELECT * FROM users WHERE name LIKE '%b';")
+test("SELECT * FROM users WHERE id BETWEEN 1 AND 2;")
+test("INSERT INTO users VALUES (4, NULL);")
+test("SELECT * FROM users WHERE name IS NULL;")
+test("SELECT * FROM users WHERE id / 0 > 1;")

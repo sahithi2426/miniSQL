@@ -86,7 +86,8 @@ class Join:
 
     def pretty_print(self, indent=""):
         print(f"{indent}├── {self.join_type} JOIN {self.table} ON")
-        self.condition.pretty_print(indent + "│   ")
+        #self.condition.pretty_print(indent + "│   ")
+        print(f"{indent}│   {self.condition}")
 
 class Where:
     def __init__(self, left, op=None, right=None):
@@ -136,3 +137,41 @@ class Truncate:
 
 class ShowTables:
     pass
+
+class Expr:
+    pass
+
+class BinaryOp(Expr):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.op = op
+        self.right = right
+
+    def __str__(self):
+        return f"({self.left} {self.op} {self.right})"
+
+    def __repr__(self):
+        return self.__str__()
+
+class UnaryOp(Expr):
+    def __init__(self, op, operand):
+        self.op = op
+        self.operand = operand
+
+class Literal(Expr):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self.value)
+
+class Column(Expr):
+    def __init__(self, name):
+        self.name = name
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self.value)

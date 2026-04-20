@@ -5,7 +5,7 @@ Executes a Block Nested Loop Join evaluating the cross-product against a predica
 from execution.executor import Executor
 
 class NestedLoopJoinExec(Executor):
-    def __init__(self, left_child: Executor, right_child: Executor, join_type: str, condition):
+    def __init__(self, left_child: Executor, right_child: Executor, join_type: str, condition, left_table,right_table):
         self.left_child = left_child
         self.right_child = right_child
         self.join_type = join_type.upper()   # INNER, LEFT, RIGHT, FULL
@@ -13,7 +13,8 @@ class NestedLoopJoinExec(Executor):
 
         self.left_tuple = None
         self.left_matched = False
-
+        self.left_table = left_table
+        self.right_table = right_table
         # Cache right side exactly once
         self.right_tuples = []
         self.right_index = 0
@@ -24,11 +25,12 @@ class NestedLoopJoinExec(Executor):
         self.unmatched_right_index = 0
 
     def init(self):
-        print("JOIN EXECUTOR INIT CALLED")
+        #print("JOIN EXECUTOR INIT CALLED")
         self.left_child.init()
         self.right_child.init()
 
         self.left_tuple = self.left_child.next()
+        self.left_columns = list(self.left_tuple.keys()) if self.left_tuple else []
         self.left_matched = False
 
         self.right_tuples = []
@@ -90,13 +92,23 @@ class NestedLoopJoinExec(Executor):
         # left table
         if t1:
             for k, v in t1.items():
-                res[f"left.{k}"] = v
+                res[k] = v
+                res[f"{self.left_table}.{k}"] = v
                 #res[k] = v   # optional (helps SELECT *)
-
+        else:
+            for k in self.left_columns:
+                res[f"left.{k}"] = None
         # right table
         if t2:
             for k, v in t2.items():
-                res[f"right.{k}"] = v
+                res[k] = v
+                res[f"{self.right_table}.{k}"] = v
+        else:
+        # CRITICAL FIX: add NULLs for right columns
+            if self.right_tuples:
+                sample = self.right_tuples[0]
+                for k in sample.keys():
+                    res[f"right.{k}"] = None
 
         return res
 
@@ -117,27 +129,46 @@ class NestedLoopJoinExec(Executor):
         if col is None or tup is None:
             return None
 
-        # Handle alias explicitly
-        if '.' in col:
-            alias, column = col.split('.', 1)
+        # direct match
+        if col in tup:
+            return tup[col]
 
-            # map alias → left/right
-            if alias == "o":
-                key = f"left.{column}"
-                return tup.get(key)
+        parts = col.split('.')
 
-            elif alias == "c":
-                key = f"right.{column}"
-                return tup.get(key)
+        # CASE 1: table.column OR alias.column
+        if len(parts) == 2:
+            alias_or_table, column = parts
 
-        # fallback (no alias)
-        short = col.split('.')[-1]
+            # try exact match first
+            key1 = f"{alias_or_table}.{column}"
+            if key1 in tup:
+                return tup[key1]
 
-        for k in tup:
-            if k.endswith("." + short):
-                return tup[k]
+            # fallback: match column name safely
+            for k in tup:
+                if k.endswith("." + column):
+                    return tup[k]
+
+        # CASE 2: only column name
+        if len(parts) == 1:
+            column = parts[0]
+
+            matches = [tup[k] for k in tup if k.endswith("." + column)]
+
+            if len(matches) == 1:
+                return matches[0]
+            elif len(matches) > 1:
+                # ambiguous column (real SQL would throw error)
+                return matches[0]
 
         return None
+
+
+    def _normalize(self, val):
+        if isinstance(val, str):
+            if val.isdigit():
+                return int(val)
+        return val
 
     def _evaluate_condition(self, tup):
         if not self.condition:
@@ -163,19 +194,22 @@ class NestedLoopJoinExec(Executor):
         if left_val is None or right_val is None:
             return False
 
+        left_val = self._normalize(left_val)
+        right_val = self._normalize(right_val)
+
         if op in ('=', '=='):
-            return str(left_val) == str(right_val)
+            return left_val == right_val
         elif op == '!=' or op == '<>':
-            return str(left_val) != str(right_val)
+            return left_val != right_val
         elif op == '<':
             try:
-                return float(left_val) < float(right_val)
+                return left_val < right_val
             except:
-                return str(left_val) < str(right_val)
+                return left_val < right_val
         elif op == '>':
             try:
-                return float(left_val) > float(right_val)
+                return left_val > right_val
             except:
-                return str(left_val) > str(right_val)
+                return left_val > right_val
 
         return False

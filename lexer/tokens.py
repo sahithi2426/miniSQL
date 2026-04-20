@@ -81,7 +81,16 @@ class TokenType(Enum):
     EXISTS = auto()
     DESC_TABLE = auto() 
     DOT = auto()
-    
+
+    PLUS = auto()
+    DIV = auto()
+    MOD = auto()
+
+    BETWEEN = auto()
+    LIKE = auto()
+    IS = auto()
+    NULL = auto()
+        
     EOF = auto()
 
 
