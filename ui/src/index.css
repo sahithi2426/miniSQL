@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--theme-base);
+  color: var(--theme-hi);
+  font-family: 'Geist', sans-serif;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes chevronOpen {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(90deg); }
+}
+
+/* ─── SCROLLBARS ─── */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-lo);
+}
+
+/* ─── SELECTION ─── */
+::selection {
+  background: var(--theme-accentDim);
+  color: var(--theme-hi);
+}
+
+/* ─── TEXTAREA PLACEHOLDER ─── */
+textarea::placeholder {
+  color: var(--theme-lo);
+  font-family: 'Geist Mono', monospace;
+}
+
+/* ─── TABLE STYLING ─── */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-mid);
+}
+
+td {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--theme-hi);
+}
+
+/* ─── BUTTON RESET ─── */
+button {
+  font-family: 'Geist', sans-serif;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: inherit;
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 1px solid rgba(0, 212, 170, 0.4);
+  outline-offset: 1px;
+}
