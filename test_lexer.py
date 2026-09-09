@@ -1,0 +1,25 @@
+from lexer.lexer import Lexer 
+def test(input_sql):
+    print("\nINPUT:")
+    print(input_sql)
+    print("\nTOKENS:")
+    lexer = Lexer(input_sql)
+    tokens = lexer.tokenize()
+    for t in tokens:
+        print(t)
+
+""" test("SELECT * FROM users;")
+test("SELECT name FROM users WHERE age >= 18;")
+test("INSERT INTO users VALUES ('Alice');")
+test("SELECT * FROM users WHERE age != 20;")
+test("SELECT * FROM users; -- this is a comment")
+test("SELECT * FROM users WHERE age <= 30;")
+test("SELECT age>=18 FROM users;")
+test("SELECT age<=30 FROM users;")
+test("SELECT age<>25 FROM users;")
+test("SELECT age!=25 FROM users;") """
+test("select name from users where age > 18;")
+test("SELECT * FROM users ORDER BY age DESC;")
+test("SELECT * FROM users LIMIT 10;")
+test("SELECT department, COUNT(*) FROM employees GROUP BY department;")
+test("SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) > 5;")

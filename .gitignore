@@ -1,0 +1,8 @@
+./vscode
+__pycache__/
+ui/node_modules/
+ui/.vite-temp/
+*.exe
+*.pyc
+catalog_temp.json
+desktop.ini
